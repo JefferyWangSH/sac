@@ -1,5 +1,6 @@
 #include "stochasticAC.h"
-#include "strings.h"
+#include <boost/algorithm/string.hpp>
+#include <boost/lexical_cast.hpp>
 #include <fstream>
 #include <iostream>
 #include <vector>
@@ -17,10 +18,10 @@ void StochasticAC::set_SAC_params(int lt, double beta, int nOmega, double omegaM
 
     omega_list.resize(nOmega);
     tau_list.resize(lt);
-    spectrum_omega.resize(nOmega);
-    green_tau.resize(lt);
-    green_tau_QMC.resize(lt);
-    err_tau_QMC.resize(lt);
+    A_omega.resize(nOmega);
+    g_tau.resize(lt);
+    g_tau_QMC.resize(lt);
+    err_g_tau_QMC.resize(lt);
 
     KernelMat.resize(lt, nOmega);
 }
@@ -36,11 +37,11 @@ void StochasticAC::read_QMC_data(const std::string& filename) {
     std::string line;
     int i = 0;
     while(getline(infile, line)) {
-        std::vector<std::string> data;
-        split(line, data, " ");
-        tau_list(i) = str2double(data[0]);
-        green_tau_QMC(i) = str2double(data[1]);
-        err_tau_QMC(i) = str2double(data[2]);
+        /* call boost library */       std::vector<std::string> data;
+        boost::split(data, line, boost::is_any_of(" "), boost::token_compress_on);
+        tau_list(i) = boost::lexical_cast<double>(data[0]);
+        g_tau_QMC(i) = boost::lexical_cast<double>(data[1]);
+        err_g_tau_QMC(i) = boost::lexical_cast<double>(data[2]);
         ++i;
     }
     assert(i == lt);

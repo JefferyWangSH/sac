@@ -3,9 +3,9 @@
 #pragma once
 
 /*
- * This head file includes StochasticAC class to analyse imaginary-time DQMC data.
- * With method of Stochastic Analytic Continuation (SAC), we managed to
- * obtain the real frequency fermion spectrum functions from imaginary-time Matsubara Green's functions.
+ *  This head file includes StochasticAC class to analyse imaginary-time DQMC data.
+ *  With method of Stochastic Analytic Continuation (SAC), we managed to
+ *  obtain the real frequency fermion spectrum functions from imaginary-time Matsubara Green's functions.
  */
 
 #define EIGEN_USE_MKL_ALL
@@ -29,8 +29,8 @@ public:
     double deltaOmega = 0.1;
 
     vecXd omega_list, tau_list;
-    vecXd spectrum_omega, green_tau;
-    vecXd green_tau_QMC, err_tau_QMC;
+    vecXd A_omega, g_tau;
+    vecXd g_tau_QMC, err_g_tau_QMC;
 
     matXd KernelMat;
 
