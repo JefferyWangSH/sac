@@ -4,7 +4,7 @@ project(stochastic_analytic_continuation)
 
 set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -march=native -O3 -fopenmp" )
 
-set(SOURCES main.cpp stochasticAC.h stochasticAC.cpp strings.h)
+set(SOURCES src/main.cpp src/stochasticAC.h src/stochasticAC.cpp src/strings.h)
 
 include_directories(/opt/intel/compilers_and_libraries_2018/linux/mkl/include)
 
