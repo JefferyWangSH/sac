@@ -23,20 +23,13 @@ int main(int argc, char *argv[]) {
     opts.add_options()
             ("h", "display this information")
             ("?", "display this information")
-            ("lt", boost::program_options::value<int>(&lt),
-                    "imaginary-time lattice size of QMC simulation, default: 80")
-            ("beta", boost::program_options::value<double>(&beta),
-                    "inverse temperature of quantum system, default: 4.0")
-            ("nOmega", boost::program_options::value<int>(&nOmega),
-                    "number of slices in frequency space, default: 50")
-            ("omegaMin", boost::program_options::value<double>(&omegaMin),
-                    "lower bound of frequency space, default: 0.0")
-            ("omegaMax", boost::program_options::value<double>(&omegaMax),
-                    "upper bound of frequency space, default: 5.0")
-            ("infile,i", boost::program_options::value<std::string>(&input_filename),
-                    "input filename, default: ../results/benchmark_g.txt")
-            ("outfile,o", boost::program_options::value<std::string>(&output_filename),
-                    "output filename, default: ../results/output.txt");
+            ("lt", boost::program_options::value<int>(&lt), "imaginary-time lattice size of QMC simulation, default: 80")
+            ("beta", boost::program_options::value<double>(&beta), "inverse temperature of quantum system, default: 4.0")
+            ("nOmega", boost::program_options::value<int>(&nOmega), "number of slices in frequency space, default: 50")
+            ("omegaMin", boost::program_options::value<double>(&omegaMin), "lower bound of frequency space, default: 0.0")
+            ("omegaMax", boost::program_options::value<double>(&omegaMax), "upper bound of frequency space, default: 5.0")
+            ("infile,i", boost::program_options::value<std::string>(&input_filename), "input filename, default: ../results/benchmark_g.txt")
+            ("outfile,o", boost::program_options::value<std::string>(&output_filename), "output filename, default: ../results/output.txt");
 
     boost::program_options::store(parse_command_line(argc, argv, opts), vm);
     boost::program_options::notify(vm);
