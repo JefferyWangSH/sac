@@ -6,6 +6,13 @@
 #include <vector>
 
 void StochasticAC::set_SAC_params(int lt, double beta, int nOmega, double omegaMin, double omegaMax) {
+    /*
+     *  Set SAC parameters.
+     */
+
+    // we restrict ourselves to the subspace where \omega > 0
+    assert(lt > 0 && beta > 0 && nOmega > 0);
+    assert(omegaMin >= 0);
     assert(omegaMin < omegaMax);
 
     this->lt = lt;
@@ -27,6 +34,10 @@ void StochasticAC::set_SAC_params(int lt, double beta, int nOmega, double omegaM
 }
 
 void StochasticAC::read_QMC_data(const std::string& filename) {
+    /*
+     *  Read imaginary-time QMC data from file.
+     */
+
     std::ifstream infile;
     infile.open(filename, std::ios::in);
 
@@ -49,24 +60,49 @@ void StochasticAC::read_QMC_data(const std::string& filename) {
 }
 
 void StochasticAC::initialSAC() {
-    // perform list of omega
+    /*
+     *  Initialize temp vector and matrices for simulation use.
+     */
+
+    // initialize list of omega and A(\omega)
     for (int i = 0; i < nOmega; ++i) {
-        omega_list(i) = omegaMin + i * deltaOmega;
+        omega_list(i) = omegaMin + (i + 1) * deltaOmega;
+
+        // initialize A(\omega) as a flat spectrum, thus normalized condition \sum A(\omega) * deltaOmega = 1.
+        // suppose system is invariant under space transformation, we here restrict omega to be positive.
+        A_omega(i) = 1 / (2 * deltaOmega);
     }
 
     // calculate kernel matrix
     for (int t = 0; t < lt; ++t) {
-        const int tau = tau_list(t);
+     const int tau = tau_list(t);
         for (int i = 0; i < nOmega; ++i) {
             const int omega = omega_list(i);
             KernelMat(t, i) = (exp(-tau*omega) + exp(-(beta-tau)*omega)) / M_PI;
         }
     }
 
-    // TODO: initialize G_tau and chi^2
+    // initialize the fitting Green function g_tau and chi ^ 2
+    cal_chi_square(A_omega, g_tau, chi_square);
+}
+
+void StochasticAC::cal_chi_square(const vecXd& A, vecXd& g_tau_fitted, double& chi_2) {
+    /*
+     *  Calculate chi ^ 2 and the fitting g(\tau) from a given weight config A(\omega)
+     *  definition: chi ^ 2 = \sum ( g(\tau) - g_QMC(\tau) )^2 / \delta(\tau) ^ 2
+     *          g (\tau) = \sum_{\omega} Kernel(\tau, \omega) * A(\omega)
+     */
+
+    // update the fitting g(\tau)
+    g_tau_fitted = KernelMat * A;
+
+    // calculate chi ^ 2
+    chi_2 = 0.0;
+    for (int t = 0; t < lt; ++t) {
+        chi_2 += pow((g_tau_fitted(t) - g_tau_QMC(t)), 2) / pow(err_g_tau_QMC(t), 2);
+    }
 }
 
 void StochasticAC::Metropolis_update() {
 
 }
-

@@ -29,6 +29,7 @@ int main(int argc, char *argv[]) {
             ("omegaMax", boost::program_options::value<double>(&omegaMax), "upper bound of frequency space, default: 5.0")
             ("infile,i", boost::program_options::value<std::string>(&input_filename), "input filename, default: ../results/benchmark_g.txt")
             ("outfile,o", boost::program_options::value<std::string>(&output_filename), "output filename, default: ../results/output.txt");
+
     try {
         boost::program_options::store(parse_command_line(argc, argv, opts), vm);
     }
@@ -59,6 +60,8 @@ int main(int argc, char *argv[]) {
     std::cout << sac.tau_list(75) << std::endl;
     std::cout << sac.g_tau_QMC(75) << std::endl;
     std::cout << sac.err_g_tau_QMC(75) << std::endl;
+
+    std::cout << sac.omega_list << std::endl;
 
     return 0;
 }

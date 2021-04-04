@@ -4,7 +4,7 @@
 
 /*
  *  This head file includes StochasticAC class to analyse imaginary-time DQMC data.
- *  With method of Stochastic Analytic Continuation (SAC), we managed to
+ *  With method of Stochastic Analytic Continuation (SAC), we anaged to
  *  obtain the real frequency fermion spectrum functions from imaginary-time Matsubara Green's functions.
  */
 
@@ -31,8 +31,11 @@ public:
     vecXd omega_list, tau_list;
     vecXd A_omega, g_tau;
     vecXd g_tau_QMC, err_g_tau_QMC;
-
     matXd KernelMat;
+    double chi_square = 0.0;
+
+    double theta = exp(7.0);     // sampling temperature of SAC system, act as regularization parameter
+
 
     StochasticAC() = default;
 
@@ -42,11 +45,11 @@ public:
     /* read DQMC data of dynamic measurements from file  */
     void read_QMC_data(const std::string& filename);
 
-    /* initialize information for simulation */
+    /* prepare for simulation */
     void initialSAC();
 
-    /* calculate chi^2: the deviation of G(\tau), for a specific weight config A(i) */
-    double cal_chi_square();
+    /* calculate chi ^ 2, for a specific weight configuration A(\omega) */
+    void cal_chi_square(const vecXd& A, vecXd& g_tau_fitted, double& chi_2);
 
     /* MC update according to Metropolis algorithm */
     void Metropolis_update();
