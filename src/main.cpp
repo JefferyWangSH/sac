@@ -56,12 +56,13 @@ int main(int argc, char *argv[]) {
 
     sac.read_QMC_data(input_filename);
 
-    std::cout.precision(16);
-    std::cout << sac.tau_list(75) << std::endl;
-    std::cout << sac.g_tau_QMC(75) << std::endl;
-    std::cout << sac.err_g_tau_QMC(75) << std::endl;
+    // std::cout.precision(16);
 
-    std::cout << sac.omega_list << std::endl;
+    for (int i = 0; i < 1; ++i){
+        sac.Metropolis_update();
+    }
+
+    // std::cout << sac.omega_list << std::endl;
 
     return 0;
 }

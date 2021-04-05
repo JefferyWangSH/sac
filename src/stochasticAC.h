@@ -12,9 +12,14 @@
 #define EIGEN_VECTORIZE_SSE4_2
 
 #include <Eigen/Core>
+#include <random>
 
 typedef Eigen::MatrixXd matXd;
 typedef Eigen::VectorXd vecXd;
+
+// random engine
+static std::default_random_engine gen(time(nullptr));
+
 
 class StochasticAC
 {
@@ -34,8 +39,8 @@ public:
     matXd KernelMat;
     double chi_square = 0.0;
 
-    double theta = exp(7.0);     // sampling temperature of SAC system, act as regularization parameter
-    int n_constraint = 4.0;         // sampling parameter to accelerate convergence
+    double theta = exp(7.0);        // sampling temperature of SAC system, act as regularizatiparameter
+    int n_constraint = 4;         // sampling parameter to accelerate convergence
 
 
     StochasticAC() = default;
@@ -57,7 +62,6 @@ public:
 
     /* MC update according to Metropolis algorithm */
     void Metropolis_update();
-
 
 };
 

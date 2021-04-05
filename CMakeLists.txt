@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.16)
 
 project(stochastic_analytic_continuation)
 
-set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -march=native -O3 -fopenmp")
+set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -march=native -O3 -fopenmp")
 
 set(SOURCES src/main.cpp src/stochasticAC.h src/stochasticAC.cpp)
 

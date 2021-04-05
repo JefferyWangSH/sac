@@ -1,9 +1,14 @@
-#include "stochasticAC.h"
 #include <boost/algorithm/string.hpp>
 #include <boost/lexical_cast.hpp>
+#include <algorithm>
+#include <cassert>
 #include <fstream>
 #include <iostream>
+#include <numeric>
+#include <random>
 #include <vector>
+
+#include "stochasticAC.h"
 
 void StochasticAC::set_SAC_params(int lt, double beta, int nOmega, double omegaMin, double omegaMax) {
     /*
@@ -53,7 +58,8 @@ void StochasticAC::read_QMC_data(const std::string& filename) {
     std::string line;
     int i = 0;
     while(getline(infile, line)) {
-        /* call boost library */       std::vector<std::string> data;
+        /* call boost library */
+        std::vector<std::string> data;
         boost::split(data, line, boost::is_any_of(" "), boost::token_compress_on);
         tau_list(i) = boost::lexical_cast<double>(data[0]);
         g_tau_QMC(i) = boost::lexical_cast<double>(data[1]);
@@ -113,7 +119,16 @@ void StochasticAC::Metropolis_update() {
      *  Local update of weight configuration A(\omega) via Metropolis algorithm.
      *  Configurations are updated in place, according a probability distribution proportional to
      *          P (A) \propto exp(- chi^2 / \theta)
-     *  Update are performed in such a way that the first few ( n_constraint ) frequency moments are conserved.
+     *  Updates are performed in such a way that the first few ( n_constraint ) frequency moments are conserved.
      */
+
+    // randomly select ( n_constraint + 1 ) weights, stored in select_omega.
+    // FIXME: check whether it is ergodic
+    std::vector<int> vector_aux(nOmega);
+    std::iota(vector_aux.begin(), vector_aux.end(), 0);
+
+    std::vector<int> select, remain;
+    std::sample(vector_aux.begin(), vector_aux.end(), std::back_inserter(select), n_constraint + 1, gen);
+
 
 }
