@@ -33,6 +33,11 @@ void StochasticAC::set_SAC_params(int lt, double beta, int nOmega, double omegaM
     KernelMat.resize(lt, nOmega);
 }
 
+void StochasticAC::set_sampling_params(const double &theta, const int &n_constraint) {
+    this->theta = theta;
+    this->n_constraint = n_constraint;
+}
+
 void StochasticAC::read_QMC_data(const std::string& filename) {
     /*
      *  Read imaginary-time QMC data from file.
@@ -104,5 +109,11 @@ void StochasticAC::cal_chi_square(const vecXd& A, vecXd& g_tau_fitted, double& c
 }
 
 void StochasticAC::Metropolis_update() {
+    /*
+     *  Local update of weight configuration A(\omega) via Metropolis algorithm.
+     *  Configurations are updated in place, according a probability distribution proportional to
+     *          P (A) \propto exp(- chi^2 / \theta)
+     *  Update are performed in such a way that the first few ( n_constraint ) frequency moments are conserved.
+     */
 
 }

@@ -50,11 +50,11 @@ int main(int argc, char *argv[]) {
     /* start SAC process */
     StochasticAC sac;
 
-    sac.set_SAC_params(80, 4.0, 50, 0.0, 5.0);
+    sac.set_SAC_params(lt, beta, nOmega, omegaMin, omegaMax);
 
     sac.initialSAC();
 
-    sac.read_QMC_data("../results/benchmark_g.txt");
+    sac.read_QMC_data(input_filename);
 
     std::cout.precision(16);
     std::cout << sac.tau_list(75) << std::endl;

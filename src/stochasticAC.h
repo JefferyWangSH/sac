@@ -35,12 +35,16 @@ public:
     double chi_square = 0.0;
 
     double theta = exp(7.0);     // sampling temperature of SAC system, act as regularization parameter
+    int n_constraint = 4.0;         // sampling parameter to accelerate convergence
 
 
     StochasticAC() = default;
 
     /* set up params for SAC */
     void set_SAC_params(int lt, double beta, int nOmega, double omegaMin, double omegaMax);
+
+  /* set up sampling temperature \theta */
+    void set_sampling_params(const double &theta, const int &n_constraint);
 
     /* read DQMC data of dynamic measurements from file  */
     void read_QMC_data(const std::string& filename);
