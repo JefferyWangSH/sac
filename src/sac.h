@@ -53,7 +53,7 @@ public:
     /* read DQMC data of dynamic measurements from file  */
     void read_QMC_data(const std::string &filename);
 
-    /* prepare for simulation */
+    /* prepare for simulation (enquire reading QMC data first) */
     void initialSAC();
 
     /* perform one step of updates */

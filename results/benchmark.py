@@ -10,7 +10,7 @@ def benchmarkA(omega_list, peak_position, peak_width):
     # omega: frequency
     # peak_position: position of Gaussian peak
     # peak_width: half-height width of the peak
-    return [abs(peak_width)*(2*np.pi)**(-0.5) * np.exp(-(omega-peak_position)**2 / (2*peak_width**2)) for omega in omega_list]
+    return [1/2 * abs(peak_width)*(2*np.pi)**(-0.5) * np.exp(-(omega-peak_position)**2 / (2*peak_width**2)) for omega in omega_list]
 
 
 def randomError(errorMin, errorMax):
@@ -26,7 +26,7 @@ def BenchmarkG(tau_list, omega_list, A_list, beta):
         for i in range(len(A_list)):
             G_temp += A_list[i] * (np.exp(-tau_list[t]*omega_list[i]) + np.exp(-(beta-tau_list[t])*omega_list[i])) / np.pi
         # random error of order 10**-3
-        error = randomError(1.0*G_temp*10**(-3), 9.9*G_temp*10**(-3))
+        error = randomError(1.0*G_temp*10**(-2), 5.0*G_temp*10**(-2))
         G_temp += error
         G_list.append(G_temp)
         err_list.append(abs(error))

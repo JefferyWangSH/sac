@@ -49,7 +49,7 @@ void SAC::set_sampling_params(const double &theta, const int &n_constraint) {
     this->n_constraint = n_constraint;
 }
 
-void SAC::read_QMC_data(const std::string& filename) {
+void SAC::read_QMC_data(const std::string &filename) {
     /*
      *  Read imaginary-time QMC data from file.
      */
@@ -100,6 +100,7 @@ void SAC::initialSAC() {
     }
 
     // initialize the fitting Green function g_tau and chi ^ 2
+    // Important pre-work: read infile data first
     cal_chi_square(A_omega, g_tau, chi_square);
 }
 
