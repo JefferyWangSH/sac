@@ -11,10 +11,6 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/lexical_cast.hpp>
 
-#define EIGEN_USE_MKL_ALL
-#define EIGEN_VECTORIZE_SSE4_2
-#include <Eigen/QR>
-
 
 void SAC::set_SAC_params(int lt, double beta, int nOmega, double omegaMin, double omegaMax) {
     /*
@@ -87,7 +83,7 @@ void SAC::initialSAC() {
 
         // initialize A(\omega) as a flat spectrum, thus normalized condition \sum A(\omega) * deltaOmega = 1.
         // suppose system is invariant under space transformation, we here restrict omega to be positive.
-        A_omega(i) = 1 / (2 * deltaOmega);
+        A_omega(i) = 1 / (2 * deltaOmega * nOmega);
     }
 
     // calculate kernel matrix
@@ -134,15 +130,19 @@ void SAC::update_A_omega(vecXd &A_omega_new) {
     assert(A_omega_new.size() == nOmega);
 
     // randomly select ( n_constraint + 1 ) weights.
-    // FIXME: check whether it is ergodic
     std::vector<int> vector_aux(nOmega);
     std::iota(vector_aux.begin(), vector_aux.end(), 0);
 
     std::vector<int> select;
     std::sample(vector_aux.begin(), vector_aux.end(), std::back_inserter(select), n_constraint + 1, gen);
 
-    // perform augmented matrix
-    matXd augment_Mat(n_constraint, n_constraint + 2);
+    vecXd A_select(n_constraint + 1);
+    for (int i = 0; i < A_select.size(); ++i) {
+        A_select(i) = A_omega_new(select[i]);
+    }
+
+    // construct augmented matrix
+    matXd augMat(n_constraint, n_constraint + 2);
     for (int m = 0; m < n_constraint; ++m) {
         /*
          *  Constraint \rho (m), 0 <= m < n_constraint :
@@ -150,43 +150,40 @@ void SAC::update_A_omega(vecXd &A_omega_new) {
          *  \rho (m) = \sum_{i} C_m(i) * A(i)
          */
         for (int i = 0; i < n_constraint + 1; ++i) {
-            augment_Mat(m, i) = pow(omega_list(select[i]), m) * ( 1 + pow(-1, m) * exp(- beta * omega_list(select[i])));
+            augMat(m, i) = pow(omega_list(select[i]), m) * ( 1 + pow(-1, m) * exp(- beta * omega_list(select[i])));
         }
     }
 
-    vecXd A_select(n_constraint + 1);
-    for (int i = 0; i < A_select.size(); ++i) {
-        A_select(i) = A_omega_new(select[i]);
-    }
+    const vecXd rho_select = augMat.block(0, 0 ,n_constraint, n_constraint + 1) * A_select;
+    augMat.col(n_constraint + 1) = rho_select;
 
-    const vecXd rho_select = augment_Mat.block(0, 0 ,n_constraint, n_constraint + 1) * A_select;
-    augment_Mat.col(n_constraint + 1) = rho_select;
-
-    // FIXME: use FullPivHouseholderQR: more accurate but slower
     // randomly select a point at a finite line segment in an (n_constraint + 1)-dimensional hypercube
-    Eigen::HouseholderQR<matXd> qr;
-    qr.compute(augment_Mat);
-    matXd R = qr.matrixQR().triangularView<Eigen::Upper>();
+    // Gaussian elimination method
+    for (int m = 0; m < n_constraint; ++m) {
+        for (int n = 0; n < m; ++n) {
+            augMat.row(m) = augMat.row(m) - augMat.row(n) / augMat(n, n) * augMat(m, n);
+        }
+    }
 
     // randomly select  A_min(i) <= A(i) <= A_max(i)
     double A_min = 0.0, A_max = 0.0;
     for (int m = n_constraint - 1; m >= 0; --m) {
         for (int n = n_constraint - 1; n > m; --n) {
-            R.row(m) = R.row(m) - R.row(n) * R(m, n) / R(n, n);
+            augMat.row(m) = augMat.row(m) - augMat.row(n) * augMat(m, n) / augMat(n, n);
         }
-        R.row(m) /= R(m, n_constraint);
+        augMat.row(m) /= augMat(m, n_constraint);
 
-        if (R(m, m) > 0)
-            A_max = (A_max == 0.0)? R(m, n_constraint + 1) : fmin(A_max, R(m, n_constraint + 1));
+        if (augMat(m, m) > 0)
+            A_max = (A_max == 0.0)? augMat(m, n_constraint + 1) : fmin(A_max, augMat(m, n_constraint + 1));
         else
-            A_min = fmax(A_min, R(m, n_constraint + 1));
+            A_min = fmax(A_min, augMat(m, n_constraint + 1));
     }
 
     // generate new wight configurations A(\omega)
     static std::uniform_real_distribution<double> u(0, 1);
     const double A_new = A_min + (A_max - A_min) * u(gen);
     for (int i = n_constraint; i >= 0; --i) {
-        A_omega_new(select[i]) = (i==n_constraint)? A_new : (R(i, n_constraint + 1) - A_new) / R(i, i);
+        A_omega_new(select[i]) = (i==n_constraint)? A_new : (augMat(i, n_constraint + 1) - A_new) / augMat(i, i);
     }
 }
 
@@ -200,11 +197,12 @@ void SAC::Metropolis_update() {
      *  Once accepted, the configurations are updated in place.
      */
 
-    // randomly update A(\omega)
+    // copy from current configuration
     vecXd A_omega_new = A_omega;
     vecXd g_tau_new = g_tau;
     double chi_square_new = chi_square;
 
+    // randomly update A(\omega)
     update_A_omega(A_omega_new);
     cal_chi_square(A_omega_new, g_tau_new, chi_square_new);
 

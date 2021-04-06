@@ -65,7 +65,7 @@ int main(int argc, char *argv[]) {
     sacMeasure.set_SAC_params(lt, beta, nOmega, omegaMin, omegaMax);
     sacMeasure.set_meas_params(nbin, nBetweenBins, nstep, nwarm);
     sacMeasure.set_sampling_params(theta, nCst);
-    sacMeasure.set_file_name(infilename, outfilename);
+    sacMeasure.set_input_file(infilename);
 
     sacMeasure.prepare();
 
@@ -78,7 +78,7 @@ int main(int argc, char *argv[]) {
     end_t = clock();
     std::cout << "Time cost: " << (double)(end_t - begin_t) / CLOCKS_PER_SEC << " s\n" << std::endl;
     std::cout << sacMeasure.sac.A_omega << std::endl << std::endl;
-    std::cout << sacMeasure.sac.A_omega.sum() * sacMeasure.sac.deltaOmega << std::endl;   // non-normalized update
+    std::cout << sacMeasure.sac.A_omega.sum() * sacMeasure.sac.deltaOmega << std::endl;
 
     return 0;
 }
