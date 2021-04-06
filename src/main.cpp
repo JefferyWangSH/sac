@@ -1,7 +1,9 @@
 #include <boost/program_options.hpp>
 #include <iostream>
 
-#include "stochasticAC.h"
+#include "sac.h"
+
+#include <ctime>
 
 
 /** The main program */
@@ -48,7 +50,7 @@ int main(int argc, char *argv[]) {
 
 
     /* start SAC process */
-    StochasticAC sac;
+    SAC sac;
 
     sac.set_SAC_params(lt, beta, nOmega, omegaMin, omegaMax);
 
@@ -56,13 +58,18 @@ int main(int argc, char *argv[]) {
 
     sac.read_QMC_data(input_filename);
 
-    // std::cout.precision(16);
+    time_t begin_t = clock(), end_t;
 
-    for (int i = 0; i < 1; ++i){
-        sac.Metropolis_update();
+    for (int n = 0; n < pow(10, 5); ++n) {
+        sac.Metropolis_update_1step();
     }
 
-    // std::cout << sac.omega_list << std::endl;
+    end_t = clock();
+    std::cout << "Time cost: " << (double)(end_t - begin_t) / CLOCKS_PER_SEC <<std::endl;
+
+    std::cout << std::endl;
+
+    std::cout << sac.A_omega << std::endl;
 
     return 0;
 }
