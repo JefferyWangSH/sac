@@ -4,8 +4,6 @@
 #include "sac.h"
 #include "measure.h"
 
-#include <ctime>
-
 
 /** The main program */
 int main(int argc, char *argv[]) {
@@ -20,8 +18,8 @@ int main(int argc, char *argv[]) {
     int nCst = 4;
 
     int nbin = 20;
-    int nBetweenBins = 5;
-    int nstep = 100;
+    int nBetweenBins = pow(10, 3);
+    int nstep = 50;
     int nwarm = (int)pow(10, 5);
 
     std::string infilename = "../results/benchmark_g.txt";
@@ -64,21 +62,19 @@ int main(int argc, char *argv[]) {
 
     sacMeasure.set_SAC_params(lt, beta, nOmega, omegaMin, omegaMax);
     sacMeasure.set_meas_params(nbin, nBetweenBins, nstep, nwarm);
-    sacMeasure.set_sampling_params(theta, nCst);
     sacMeasure.set_input_file(infilename);
 
     sacMeasure.prepare();
 
-    time_t begin_t = clock(), end_t;
+    sacMeasure.set_sampling_params(theta, nCst);
 
-    for (int n = 0; n < pow(10, 5); ++n) {
-        sacMeasure.sac.Metropolis_update_1step();
-    }
+    sacMeasure.measure();
 
-    end_t = clock();
-    std::cout << "Time cost: " << (double)(end_t - begin_t) / CLOCKS_PER_SEC << " s\n" << std::endl;
-    std::cout << sacMeasure.sac.A_omega << std::endl << std::endl;
-    std::cout << sacMeasure.sac.A_omega.sum() * sacMeasure.sac.deltaOmega << std::endl;
+    sacMeasure.analyse_Stats();
+
+    sacMeasure.print_Stats();
+
+    sacMeasure.output_Stats(outfilename);
 
     return 0;
 }

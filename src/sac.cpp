@@ -107,6 +107,8 @@ void SAC::cal_chi_square(const vecXd &A, vecXd &g_tau_fitted, double &chi_2) {
      *      chi ^ 2 = \sum ( g(\tau) - g_QMC(\tau) )^2 / \delta(\tau) ^ 2
      *      g (\tau) = \sum_{\omega} Kernel(\tau, \omega) * A(\omega)
      */
+    assert(A.size() == nOmega);
+    assert(g_tau_fitted.size() == lt);
 
     // update the fitting g(\tau)
     g_tau_fitted = KernelMat * A;

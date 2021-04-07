@@ -45,6 +45,8 @@ public:
 
     Measure() = default;
 
+    ~Measure();
+
     /* set parameters */
     void set_SAC_params(int lt, double beta, int nOmega, double omegaMin, double omegaMax);
 
@@ -54,19 +56,22 @@ public:
 
     void set_input_file(const std::string &infilename);
 
-    /* prepare for measuring
-     * once input file was changed, prepare operation is needed before measuring. todo: check is_data_read. */
+    /* prepare for measuring: once input file was changed, prepare operation is needed before measuring. */
     void prepare();
 
-    void measure(bool bool_display_process);
+    /* measuring process */
+    void measure();
+
+    /* analyse data and output results */
+    void analyse_Stats();
 
     void print_Stats() const;
 
-    void output_Stats(const std::string &outfilename);
+    void output_Stats(const std::string &outfilename) const;
 
     void clear_Stats();
 
-    void calculate_Entropy();
+    double calculate_Entropy();
 
 private:
 
