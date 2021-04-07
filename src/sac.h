@@ -41,6 +41,10 @@ public:
     double theta = exp(7.0);    // sampling temperature of SAC system, act as regularization parameter
     int n_constraint = 4;          // sampling parameter to accelerate convergence
 
+    int total_step = 0;
+    int accept_step = 0;
+    double accept_rate = 0.0;
+
 
     SAC() = default;
 

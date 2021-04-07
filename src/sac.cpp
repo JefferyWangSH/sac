@@ -198,6 +198,7 @@ void SAC::Metropolis_update() {
      *
      *  Once accepted, the configurations are updated in place.
      */
+    total_step++;
 
     // copy from current configuration
     vecXd A_omega_new = A_omega;
@@ -215,6 +216,7 @@ void SAC::Metropolis_update() {
         A_omega = A_omega_new;
         g_tau = g_tau_new;
         chi_square = chi_square_new;
+        accept_step++;
     }
 }
 

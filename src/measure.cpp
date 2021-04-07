@@ -82,6 +82,8 @@ void Measure::analyse_Stats() {
     errChi2 = pow(errChi2 - meanChi2 * meanChi2, 0.5) / pow(nbin - 1, 0.5);
     errEntropy = pow(errEntropy - meanEntropy * meanEntropy, 0.5) / pow(nbin - 1, 0.5);
 
+    sac.accept_rate = (double)sac.accept_step / (double)sac.total_step;
+
     end_t = clock();
 }
 
@@ -100,6 +102,7 @@ void Measure::print_Stats() const {
 
     std::cout.precision(8);
     std::cout << "  Measurements: " << std::endl
+              << "    average rate of update being accepted: " << sac.accept_rate << std::endl
               << "    ln(chi^2):    " << meanChi2 << "    err: " << errChi2 << std::endl
               << "    Entropy S:    " << meanEntropy << "    err: " << errEntropy << std::endl
               << std::endl;
@@ -119,6 +122,7 @@ void Measure::output_Stats(const std::string &outfilename) const {
     outfile.precision(8);
     outfile << std::setiosflags(std::ios::right)
             << std::setw(15) << log(1/theta)
+            << std::setw(15) << nCst
             << std::setw(15) << meanChi2
             << std::setw(15) << meanEntropy
             << std::setw(15) << errChi2
@@ -141,6 +145,10 @@ void Measure::clear_Stats() {
     errEntropy = 0.0;
     meanChi2 = 0.0;
     errChi2 = 0.0;
+
+    sac.accept_step = 0;
+    sac.total_step = 0;
+    sac.accept_rate = 0.0;
 }
 
 double Measure::calculate_Entropy() {

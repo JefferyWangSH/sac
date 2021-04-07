@@ -10,7 +10,7 @@ def benchmarkA(omega_list, peak_position, peak_width):
     # omega: frequency
     # peak_position: position of Gaussian peak
     # peak_width: half-height width of the peak
-    return [1/2 * abs(peak_width)*(2*np.pi)**(-0.5) * np.exp(-(omega-peak_position)**2 / (2*peak_width**2)) for omega in omega_list]
+    return [0.5 / abs(peak_width) * (2*np.pi)**(-0.5) * np.exp(-(omega-peak_position)**2 / (2*peak_width**2)) for omega in omega_list]
 
 
 def randomError(errorMin, errorMax):
