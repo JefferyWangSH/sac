@@ -12,7 +12,7 @@
  *   2. Displaced Green's functions obtained from QMC seem not to be anti-periodic. ???
  *   3. Update scheme doesn't work if \omega = 0.
  *   4. Regulate theta and nCst to obtain the most reasonable spectrum;
- *      FIXED: during the annealing process, one should keep theta being of order hi^2,
+ *      FIXED: during the annealing process, one should keep theta being of order chi^2,
  *             thus configurations can be updated with moderate accepting rate.
  *   5. ...
  */
