@@ -93,7 +93,7 @@ void Measure::print_Stats() const {
     const int minute = floor(time / 60);
     const double sec = time - 60 * minute;
 
-    std::cout << "====================================================" << std::endl;
+    std::cout << "========================================================" << std::endl;
 
     std::cout << "  Simulation Parameters: " << std::endl
               << "    Temperature ln(1/theta):      " << log(1/theta) << std::endl
@@ -110,7 +110,7 @@ void Measure::print_Stats() const {
 
     std::cout << "  Time Cost:      " << minute << " min " << sec << " s" << std::endl;
 
-    std::cout << "====================================================" << std::endl
+    std::cout << "========================================================" << std::endl
               << std::endl;
 
 }

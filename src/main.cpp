@@ -1,8 +1,20 @@
 #include <boost/program_options.hpp>
 #include <iostream>
+#include <fstream>
 
 #include "sac.h"
 #include "measure.h"
+
+
+/**
+ *  TODO: some problems are list here
+ *   1. A(\omega) = A(-\omega) ? if so, modify kernel matrix.
+ *   2. Displaced Green's functions obtained from QMC seem not to be anti-periodic.
+ *   3. Update scheme doesn't work if \omega = 0.
+ *   4. Regulate theta and nCst to obtain the most reasonable spectrum;
+ *      different values of theta seem to have few influence on the goodness of fitting.
+ *   5. ...
+ */
 
 
 /** The main program */
@@ -18,7 +30,7 @@ int main(int argc, char *argv[]) {
     int nCst = 4;
 
     int nbin = 20;
-    int nBetweenBins = pow(10, 3);
+    int nBetweenBins = (int)pow(10, 3);
     int nstep = 50;
     int nwarm = (int)pow(10, 5);
 
@@ -66,15 +78,25 @@ int main(int argc, char *argv[]) {
 
     sacMeasure.prepare();
 
-    sacMeasure.set_sampling_params(theta, nCst);
+    std::ofstream outfile;
+    outfile.open(outfilename, std::ios::out | std::ios::trunc);
 
-    sacMeasure.measure();
+    while (theta >= exp(0)) {
+        sacMeasure.set_sampling_params(theta, nCst);
 
-    sacMeasure.analyse_Stats();
+        sacMeasure.measure();
 
-    sacMeasure.print_Stats();
+        sacMeasure.analyse_Stats();
 
-    sacMeasure.output_Stats(outfilename);
+        sacMeasure.print_Stats();
+
+        sacMeasure.output_Stats(outfilename);
+
+        theta /= exp(0.5);
+    }
+
+    std::cout << sacMeasure.sac.A_omega << std::endl;
+    std::cout << sacMeasure.sac.A_omega.sum() * sacMeasure.sac.deltaOmega << std::endl;
 
     return 0;
 }

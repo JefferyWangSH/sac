@@ -24,7 +24,7 @@ def BenchmarkG(tau_list, omega_list, A_list, beta):
     for t in range(len(tau_list)):
         G_temp = 0.0
         for i in range(len(A_list)):
-            G_temp += A_list[i] * (np.exp(-tau_list[t]*omega_list[i]) + np.exp(-(beta-tau_list[t])*omega_list[i])) / np.pi
+            G_temp += A_list[i] * np.exp(-tau_list[t]*omega_list[i]) / (1 + np.exp(-beta*omega_list[i]))
         # random error of order 10**-3
         error = randomError(1.0*G_temp*10**(-3), 9.9*G_temp*10**(-3))
         G_temp += error

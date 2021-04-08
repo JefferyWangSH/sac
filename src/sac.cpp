@@ -88,10 +88,10 @@ void SAC::initialSAC() {
 
     // calculate kernel matrix
     for (int t = 0; t < lt; ++t) {
-     const int tau = tau_list(t);
+     const double tau = tau_list(t);
         for (int i = 0; i < nOmega; ++i) {
-            const int omega = omega_list(i);
-            KernelMat(t, i) = (exp(-tau*omega) + exp(-(beta-tau)*omega)) / M_PI;
+            const double omega = omega_list(i);
+            KernelMat(t, i) = exp(-tau*omega) / (1 + exp(beta*omega));
         }
     }
 
