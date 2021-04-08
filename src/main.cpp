@@ -9,10 +9,11 @@
 /**
  *  TODO: some problems are list here
  *   1. A(\omega) = A(-\omega) ? if so, modify kernel matrix.
- *   2. Displaced Green's functions obtained from QMC seem not to be anti-periodic.
+ *   2. Displaced Green's functions obtained from QMC seem not to be anti-periodic. ???
  *   3. Update scheme doesn't work if \omega = 0.
  *   4. Regulate theta and nCst to obtain the most reasonable spectrum;
- *      different values of theta seem to have few influence on the goodness of fitting.
+ *      FIXED: during the annealing process, one should keep theta being of order hi^2,
+ *             thus configurations can be updated with moderate accepting rate.
  *   5. ...
  */
 
@@ -26,7 +27,7 @@ int main(int argc, char *argv[]) {
     int nOmega = 50;
     double omegaMin = 0.0, omegaMax = 5.0;
 
-    double theta = exp(7);
+    double theta = exp(25);
     int nCst = 4;
 
     int nbin = 20;
@@ -78,6 +79,21 @@ int main(int argc, char *argv[]) {
 
     sacMeasure.prepare();
 
+    sacMeasure.set_sampling_params(theta, nCst);
+
+    sacMeasure.measure();
+
+    sacMeasure.analyse_Stats();
+
+    sacMeasure.print_Stats();
+
+    sacMeasure.output_Stats(outfilename);
+
+    std::cout << sacMeasure.sac.A_omega << std::endl;
+
+
+    // annealing process
+    /*
     std::ofstream outfile;
     outfile.open(outfilename, std::ios::out | std::ios::trunc);
 
@@ -97,6 +113,7 @@ int main(int argc, char *argv[]) {
 
     std::cout << sacMeasure.sac.A_omega << std::endl;
     std::cout << sacMeasure.sac.A_omega.sum() * sacMeasure.sac.deltaOmega << std::endl;
+    */
 
     return 0;
 }
