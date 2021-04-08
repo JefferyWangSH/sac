@@ -6,7 +6,7 @@ set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -march=native -O3 -fopenmp")
 
 set(SOURCES src/main.cpp src/sac.h src/sac.cpp src/measure.h src/measure.cpp)
 
-# eigen linked to MKL
+# link eigen to MKL
 include_directories(/opt/intel/compilers_and_libraries_2018/linux/mkl/include)
 
 include_directories(/opt/intel/mkl/include)
