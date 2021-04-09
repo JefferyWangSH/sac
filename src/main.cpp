@@ -1,3 +1,5 @@
+#include <boost/algorithm/string.hpp>
+#include <boost/lexical_cast.hpp>
 #include <boost/program_options.hpp>
 #include <iostream>
 #include <fstream>
@@ -27,16 +29,18 @@ int main(int argc, char *argv[]) {
     int nOmega = 50;
     double omegaMin = 0.0, omegaMax = 5.0;
 
-    double theta = exp(25);
+    double theta = exp(20);
     int nCst = 4;
 
     int nbin = 20;
     int nBetweenBins = (int)pow(10, 3);
     int nstep = 50;
-    int nwarm = (int)pow(10, 5);
+    int nwarm = (int)(pow(10, 5));
 
-    std::string infilename = "../results/benchmark_g.txt";
-    std::string outfilename = "../results/output.txt";
+    std::string infile_Green = "../results/benchmark_g.txt";
+    std::string infile_A = "../results/configs/config_A_" + boost::lexical_cast<std::string>(log(theta) + 0.1) + ".txt";
+    std::string outfile_Stats = "../results/stats/stats_A_" + boost::lexical_cast<std::string>(log(theta)) + ".txt";
+    std::string outfile_Config =  "../results/configs/config_A_" + boost::lexical_cast<std::string>(log(theta)) + ".txt";
 
     /* read params from command line */
     boost::program_options::options_description opts("Program options");
@@ -49,8 +53,8 @@ int main(int argc, char *argv[]) {
             ("nOmega,n", boost::program_options::value<int>(&nOmega), "number of slices in frequency space, default: 50")
             ("omegaMin", boost::program_options::value<double>(&omegaMin), "lower bound of frequency space, default: 0.0")
             ("omegaMax", boost::program_options::value<double>(&omegaMax), "upper bound of frequency space, default: 5.0")
-            ("infile,i", boost::program_options::value<std::string>(&infilename), "input filename, default: ../results/benchmark_g.txt")
-            ("outfile,o", boost::program_options::value<std::string>(&outfilename), "output filename, default: ../results/output.txt");
+            ("infile,i", boost::program_options::value<std::string>(&infile_Green), "input filename, default: ../results/benchmark_g.txt");
+            // TODO
 
     try {
         boost::program_options::store(parse_command_line(argc, argv, opts), vm);
@@ -70,34 +74,18 @@ int main(int argc, char *argv[]) {
 
 
     /* start SAC and measuring process */
-
     Measure sacMeasure;
 
     sacMeasure.set_SAC_params(lt, beta, nOmega, omegaMin, omegaMax);
     sacMeasure.set_meas_params(nbin, nBetweenBins, nstep, nwarm);
-    sacMeasure.set_input_file(infilename);
+
+    // sacMeasure.set_input_file(infile_Green, infile_A);
+    sacMeasure.set_input_file(infile_Green);
 
     sacMeasure.prepare();
 
-    sacMeasure.set_sampling_params(theta, nCst);
-
-    sacMeasure.measure();
-
-    sacMeasure.analyse_Stats();
-
-    sacMeasure.print_Stats();
-
-    sacMeasure.output_Stats(outfilename);
-
-    std::cout << sacMeasure.sac.A_omega << std::endl;
-
-
-    // annealing process
-    /*
-    std::ofstream outfile;
-    outfile.open(outfilename, std::ios::out | std::ios::trunc);
-
-    while (theta >= exp(0)) {
+    while (theta > exp(-5)) {
+        // annealing process
         sacMeasure.set_sampling_params(theta, nCst);
 
         sacMeasure.measure();
@@ -106,14 +94,12 @@ int main(int argc, char *argv[]) {
 
         sacMeasure.print_Stats();
 
-        sacMeasure.output_Stats(outfilename);
+        // sacMeasure.output_Stats(outfile_Stats);
 
-        theta /= exp(0.5);
+        // sacMeasure.output_Config(outfile_Config);
+
+        theta *= exp(-0.1);
     }
-
-    std::cout << sacMeasure.sac.A_omega << std::endl;
-    std::cout << sacMeasure.sac.A_omega.sum() * sacMeasure.sac.deltaOmega << std::endl;
-    */
 
     return 0;
 }

@@ -26,9 +26,9 @@ public:
     double theta = exp(7);
     int nCst = 4;
 
-    // input/output filename
-    std::string infilename = "../results/benchmark_g.txt";
-    bool is_data_read = false;
+    // input filename
+    std::string infile_Green = "../results/benchmark_g.txt";
+    std::string infile_A;
 
     // record cpu time
     time_t begin_t = clock(), end_t = clock();
@@ -42,6 +42,7 @@ public:
     double meanChi2 = 0.0;
     double errChi2 = 0.0;
 
+    bool is_read_data = false;
 
     Measure() = default;
 
@@ -54,9 +55,9 @@ public:
 
     void set_sampling_params(const double &theta, const int &nCst);
 
-    void set_input_file(const std::string &infilename);
+    void set_input_file(const std::string &infile_Green, const std::string &infile_A = "");
 
-    /* prepare for measuring: once input file was changed, prepare operation is needed before measuring. */
+    /* prepare for measuring: reading data from input file */
     void prepare();
 
     /* measuring process */
@@ -68,6 +69,8 @@ public:
     void print_Stats() const;
 
     void output_Stats(const std::string &outfilename) const;
+
+    void output_Config(const std::string &outfilename) const;
 
     void clear_Stats();
 

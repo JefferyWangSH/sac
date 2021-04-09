@@ -24,19 +24,22 @@ void Measure::set_sampling_params(const double &theta, const int &nCst) {
     this->sac.set_sampling_params(theta, nCst);
 }
 
-void Measure::set_input_file(const std::string &infilename) {
-    this->infilename = infilename;
-    is_data_read = false;
+void Measure::set_input_file(const std::string &infile_Green, const std::string &infile_A) {
+    this->infile_Green = infile_Green;
+    this->infile_A = infile_A;
+    is_read_data = false;
 }
 
+
 void Measure::prepare() {
-    sac.read_QMC_data(infilename);
-    is_data_read = true;
+    sac.read_QMC_data(infile_Green);
+    sac.read_Config_data(infile_A);
+    is_read_data = true;
     sac.initialSAC();   // pre-read of data is needed for process of initialization
 }
 
 void Measure::measure() {
-    assert(is_data_read);
+    assert(is_read_data);
 
     clear_Stats();
 
@@ -117,10 +120,10 @@ void Measure::print_Stats() const {
 
 void Measure::output_Stats(const std::string &outfilename) const {
     std::ofstream outfile;
-    outfile.open(outfilename, std::ios::out | std::ios::app);
+    outfile.open(outfilename, std::ios::out | std::ios::trunc);
 
     outfile.precision(8);
-    outfile << std::setiosflags(std::ios::right)
+    outfile << std::right
             << std::setw(15) << log(1/theta)
             << std::setw(15) << nCst
             << std::setw(15) << meanChi2
@@ -128,6 +131,29 @@ void Measure::output_Stats(const std::string &outfilename) const {
             << std::setw(15) << errChi2
             << std::setw(15) << errEntropy
             << std::endl;
+    outfile.precision(-1);
+    outfile.close();
+}
+
+void Measure::output_Config(const std::string &outfilename) const {
+    std::ofstream outfile;
+    outfile.open(outfilename, std::ios::out | std::ios::trunc);
+
+    outfile.precision(5);
+    outfile << "Statistic results: " << std::endl
+            << "  average rate of update being accepted: " << sac.accept_rate << std::endl
+            << "  ln(1/theta) = " << log(1/theta)  << "   ln(chi^2) = " << meanChi2 << std::endl << std::endl
+            << std::right
+            << std::setw(15) << "\\omega" << std::setw(20) << "A(\\omega)" << std::endl
+            << std::endl;
+
+    outfile.precision(8);
+    for (int i = 0; i < sac.nOmega; ++i) {
+        outfile << std::right
+                << std::setw(15) << sac.omega_list(i)
+                << std::setw(20) << sac.A_omega(i)
+                << std::endl;
+    }
     outfile.precision(-1);
     outfile.close();
 }
@@ -169,4 +195,3 @@ double Measure::calculate_Entropy() {
 Measure::~Measure() {
     std::cout << "The simulation was done :)" << std::endl;
 }
-
