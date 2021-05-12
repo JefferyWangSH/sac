@@ -3,9 +3,10 @@
 #include <boost/program_options.hpp>
 #include <iostream>
 #include <fstream>
+#include <iomanip>
 
-#include "sac.h"
-#include "measure.h"
+#include "SAC.h"
+#include "MonteCarloSAC.h"
 
 
 /**
@@ -29,17 +30,17 @@ int main(int argc, char *argv[]) {
     int nOmega = 50;
     double omegaMin = 0.0, omegaMax = 5.0;
 
-    double theta = exp(20);
-    int nCst = 4;
+    double theta = exp(32);
+    int nCst = 2;
 
-    int nbin = 20;
+    int nbin = 40;
     int nBetweenBins = (int)pow(10, 3);
-    int nstep = 50;
-    int nwarm = (int)(pow(10, 5));
+    int nstep = 100;
+    int nwarm = (int)(3 * pow(10, 5));
 
-    std::string infile_Green = "../results/benchmark_g.txt";
-    std::string infile_A = "../results/configs/config_A_" + boost::lexical_cast<std::string>(log(theta) + 0.1) + ".txt";
-    std::string outfile_Stats = "../results/stats/stats_A_" + boost::lexical_cast<std::string>(log(theta)) + ".txt";
+    std::string infile_Green = "../results/benchmark/benchmark_g.txt";
+    std::string infile_A = "../results/configs/config_A_25.0.txt";
+    std::string outfile_Stats = "../results/stats/output.txt";
     std::string outfile_Config =  "../results/configs/config_A_" + boost::lexical_cast<std::string>(log(theta)) + ".txt";
 
     /* read params from command line */
@@ -54,7 +55,7 @@ int main(int argc, char *argv[]) {
             ("omegaMin", boost::program_options::value<double>(&omegaMin), "lower bound of frequency space, default: 0.0")
             ("omegaMax", boost::program_options::value<double>(&omegaMax), "upper bound of frequency space, default: 5.0")
             ("infile,i", boost::program_options::value<std::string>(&infile_Green), "input filename, default: ../results/benchmark_g.txt");
-            // TODO
+    // TODO
 
     try {
         boost::program_options::store(parse_command_line(argc, argv, opts), vm);
@@ -74,31 +75,38 @@ int main(int argc, char *argv[]) {
 
 
     /* start SAC and measuring process */
-    Measure sacMeasure;
+    MonteCarloSAC sacMC;
 
-    sacMeasure.set_SAC_params(lt, beta, nOmega, omegaMin, omegaMax);
-    sacMeasure.set_meas_params(nbin, nBetweenBins, nstep, nwarm);
+    sacMC.set_SAC_params(lt, beta, nOmega, omegaMin, omegaMax);
+    sacMC.set_meas_params(nbin, nBetweenBins, nstep, nwarm);
 
-    // sacMeasure.set_input_file(infile_Green, infile_A);
-    sacMeasure.set_input_file(infile_Green);
+    // sacMC.set_input_file(infile_Green, infile_A);
+    sacMC.set_input_file(infile_Green);
 
-    sacMeasure.prepare();
+    sacMC.prepare();
 
+    int nn = 0;
+    theta = exp(32);
     while (theta > exp(-5)) {
         // annealing process
-        sacMeasure.set_sampling_params(theta, nCst);
+        sacMC.set_sampling_params(theta, nCst);
 
-        sacMeasure.measure();
+        sacMC.measure();
 
-        sacMeasure.analyse_Stats();
+        sacMC.analyse_Stats();
 
-        sacMeasure.print_Stats();
+        sacMC.print_Stats();
 
-        // sacMeasure.output_Stats(outfile_Stats);
+        sacMC.output_Stats("../results/stats/output-cst2.txt");
 
-        // sacMeasure.output_Config(outfile_Config);
+        if (nn % 5 == 0) {
+            std::stringstream ss;
+            ss << std::setiosflags(std::ios::fixed) << std::setprecision(1) << log(theta);
+            sacMC.output_Config("../results/configs/config_A_" + ss.str() + ".txt");
+        }
 
         theta *= exp(-0.1);
+        nn++;
     }
 
     return 0;

@@ -2,13 +2,13 @@
 #include <fstream>
 #include <iomanip>
 
-#include "measure.h"
+#include "MonteCarloSAC.h"
 
-void Measure::set_SAC_params(int lt, double beta, int nOmega, double omegaMin, double omegaMax) {
+void MonteCarloSAC::set_SAC_params(int lt, double beta, int nOmega, double omegaMin, double omegaMax) {
     this->sac.set_SAC_params(lt, beta, nOmega, omegaMin, omegaMax);
 }
 
-void Measure::set_meas_params(int nbin, int nBetweenBins, int nstep, int nwarm) {
+void MonteCarloSAC::set_meas_params(int nbin, int nBetweenBins, int nstep, int nwarm) {
     this->nbin = nbin;
     this->nBetweenBins = nBetweenBins;
     this->nstep = nstep;
@@ -18,27 +18,27 @@ void Measure::set_meas_params(int nbin, int nBetweenBins, int nstep, int nwarm) 
     binEntropy.resize(nbin);
 }
 
-void Measure::set_sampling_params(const double &theta, const int &nCst) {
+void MonteCarloSAC::set_sampling_params(const double &theta, const int &nCst) {
     this->theta = theta;
     this->nCst = nCst;
     this->sac.set_sampling_params(theta, nCst);
 }
 
-void Measure::set_input_file(const std::string &infile_Green, const std::string &infile_A) {
+void MonteCarloSAC::set_input_file(const std::string &infile_Green, const std::string &infile_A) {
     this->infile_Green = infile_Green;
     this->infile_A = infile_A;
     is_read_data = false;
 }
 
 
-void Measure::prepare() {
+void MonteCarloSAC::prepare() {
     sac.read_QMC_data(infile_Green);
     sac.read_Config_data(infile_A);
     is_read_data = true;
     sac.initialSAC();   // pre-read of data is needed for process of initialization
 }
 
-void Measure::measure() {
+void MonteCarloSAC::measure() {
     assert(is_read_data);
 
     clear_Stats();
@@ -67,7 +67,7 @@ void Measure::measure() {
     }
 }
 
-void Measure::analyse_Stats() {
+void MonteCarloSAC::analyse_Stats() {
 
     // alyse data: mean and error
     for (int bin = 0; bin < nbin; ++bin) {
@@ -90,7 +90,7 @@ void Measure::analyse_Stats() {
     end_t = clock();
 }
 
-void Measure::print_Stats() const {
+void MonteCarloSAC::print_Stats() const {
 
     const double time = (double)(end_t - begin_t)/CLOCKS_PER_SEC;
     const int minute = floor(time / 60);
@@ -118,14 +118,14 @@ void Measure::print_Stats() const {
 
 }
 
-void Measure::output_Stats(const std::string &outfilename) const {
+void MonteCarloSAC::output_Stats(const std::string &outfilename) const {
     std::ofstream outfile;
-    outfile.open(outfilename, std::ios::out | std::ios::trunc);
+    outfile.open(outfilename, std::ios::out | std::ios::app);
 
     outfile.precision(8);
     outfile << std::right
-            << std::setw(15) << log(1/theta)
             << std::setw(15) << nCst
+            << std::setw(15) << log(1/theta)
             << std::setw(15) << meanChi2
             << std::setw(15) << meanEntropy
             << std::setw(15) << errChi2
@@ -135,7 +135,7 @@ void Measure::output_Stats(const std::string &outfilename) const {
     outfile.close();
 }
 
-void Measure::output_Config(const std::string &outfilename) const {
+void MonteCarloSAC::output_Config(const std::string &outfilename) const {
     std::ofstream outfile;
     outfile.open(outfilename, std::ios::out | std::ios::trunc);
 
@@ -158,7 +158,7 @@ void Measure::output_Config(const std::string &outfilename) const {
     outfile.close();
 }
 
-void Measure::clear_Stats() {
+void MonteCarloSAC::clear_Stats() {
     assert(binEntropy.size() == nbin);
     assert(binChi2.size() == nbin);
 
@@ -177,7 +177,7 @@ void Measure::clear_Stats() {
     sac.accept_rate = 0.0;
 }
 
-double Measure::calculate_Entropy() {
+double MonteCarloSAC::calculate_Entropy() {
     /*
      *  Definition of entropy S:
      *
@@ -192,6 +192,8 @@ double Measure::calculate_Entropy() {
     return s;
 }
 
-Measure::~Measure() {
+MonteCarloSAC::~MonteCarloSAC() {
     std::cout << "The simulation was done :)" << std::endl;
 }
+
+

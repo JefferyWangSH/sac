@@ -6,7 +6,7 @@
 #include <random>
 #include <vector>
 
-#include "sac.h"
+#include "SAC.h"
 
 #include <boost/algorithm/string.hpp>
 #include <boost/lexical_cast.hpp>
@@ -86,8 +86,7 @@ void SAC::read_Config_data(const std::string &filename) {
             omega_list(i) = omegaMin + (i + 1) * deltaOmega;
 
             // normalized condition \sum A(\omega) * deltaOmega = 1.
-            // suppose system is invariant under space transformation, we here restrict omega to be positive.
-            A_omega(i) = 1 / (2 * deltaOmega * nOmega);
+            A_omega(i) = 1 / (deltaOmega * nOmega);
         }
     }
 
@@ -114,6 +113,7 @@ void SAC::read_Config_data(const std::string &filename) {
             }
             assert(i - 6 == nOmega);
             infile.close();
+            std::cerr << "succeed to read configs from file " + filename + " !" << std::endl;
         }
     }
 }
@@ -263,3 +263,5 @@ void SAC::Metropolis_update_1step() {
         Metropolis_update();
     }
 }
+
+
