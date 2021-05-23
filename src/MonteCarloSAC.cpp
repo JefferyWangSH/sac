@@ -1,199 +1,147 @@
+#include <cassert>
 #include <iostream>
-#include <fstream>
-#include <iomanip>
 
 #include "MonteCarloSAC.h"
 
-void MonteCarloSAC::set_SAC_params(int lt, double beta, int nOmega, double omegaMin, double omegaMax) {
-    this->sac.set_SAC_params(lt, beta, nOmega, omegaMin, omegaMax);
+
+void MonteCarloSAC::set_SAC_params(int _lt, double _beta, int _n_config, double _omega_min, double _omega_max, int _n_moment) {
+    assert( _lt > 0 && _beta > 0 );
+    assert( _n_config > 0 );
+    assert( _omega_min < _omega_max );
+
+    this->lt = _lt;
+    this->beta = _beta;
+    this->n_config = _n_config;
+    this->omega_min = _omega_min;
+    this->omega_max = _omega_max;
+    this->n_moment = _n_moment;
 }
 
-void MonteCarloSAC::set_meas_params(int nbin, int nBetweenBins, int nstep, int nwarm) {
-    this->nbin = nbin;
-    this->nBetweenBins = nBetweenBins;
-    this->nstep = nstep;
-    this->nwarm = nwarm;
+void MonteCarloSAC::set_tempering_profile(const int &_nalpha, const std::vector<double> &_alpha_list) {
+    assert( _alpha_list.size() == _nalpha );
 
-    binChi2.resize(nbin);
-    binEntropy.resize(nbin);
+    this->nalpha = _nalpha;
+
+    // initialize alpha profiles
+    this->alpha_list.clear();
+    this->alpha_list.reserve(_nalpha);
+    for (int i = 0; i < _nalpha; ++i) {
+        this->alpha_list.emplace_back(_alpha_list[i]);
+    }
+    this->alpha_list.shrink_to_fit();
 }
 
-void MonteCarloSAC::set_sampling_params(const double &theta, const int &nCst) {
-    this->theta = theta;
-    this->nCst = nCst;
-    this->sac.set_sampling_params(theta, nCst);
+void MonteCarloSAC::set_measure_params(int _nbin, int _nstep_1bin, int _step_between_bins, int _nwarm, int _n_swap_pace) {
+    this->nbin = _nbin;
+    this->nstep_1bin = _nstep_1bin;
+    this->step_between_bins = _step_between_bins;
+    this->nwarm = _nwarm;
+    this->n_swap_pace = _n_swap_pace;
 }
 
-void MonteCarloSAC::set_input_file(const std::string &infile_Green, const std::string &infile_A) {
-    this->infile_Green = infile_Green;
-    this->infile_A = infile_A;
-    is_read_data = false;
+void MonteCarloSAC::set_input_file(const std::string &_infile_green, const std::string &_infile_A) {
+    this->infile_green = _infile_green;
+    this->infile_A = _infile_A;
 }
-
 
 void MonteCarloSAC::prepare() {
-    sac.read_QMC_data(infile_Green);
-    sac.read_Config_data(infile_A);
-    is_read_data = true;
-    sac.initialSAC();   // pre-read of data is needed for process of initialization
+    /*
+     *  preparations for parallel-tempering monte carlo procedure
+     */
+
+    // prepare for SACs
+    // TODO: construct function by copy
+    sac_list.clear();
+    sac_list.reserve(nalpha);
+    for (int n = 0; n < nalpha; ++n) {
+        sac_list.emplace_back();
+        sac_list[n].set_SAC_params(lt, beta, n_config, omega_min, omega_max, n_moment);
+        sac_list[n].set_alpha(alpha_list[n]);
+        sac_list[n].set_QMC_filename(infile_green);
+        sac_list[n].prepare();
+    }
+
+    p_list.clear();
+    p_list.reserve(nalpha - 1);
+    for (int n = 0; n < nalpha - 1; ++n) {
+        p_list.emplace_back();
+    }
+    p_list.shrink_to_fit();
+
+    // prepare for measuring
+    // TODO
 }
 
-void MonteCarloSAC::measure() {
-    assert(is_read_data);
-
-    clear_Stats();
-
-    // record cpu time
-    begin_t = clock();
+void MonteCarloSAC::run_Monte_Carlo() {
+    /*
+     *  Metropolis Monte Carlo update in parallel,
+     *  swap configs of adjacent layers every n_swap_pace steps.
+     */
 
     // warm up process
-    for (int nwm = 0; nwm < nwarm; ++nwm) {
-        sac.Metropolis_update_1step();
-    }
+    for (int warm = 0; warm < nwarm; ++warm) {
 
-    // measuring process
-    for (int bin = 0; bin < nbin; ++bin) {
-        // loop for bin
-        for (int nstp = 0; nstp < nstep; ++nstp) {
-            sac.Metropolis_update_1step();
-            binChi2[bin] += log(sac.chi_square);
-            binEntropy[bin] += calculate_Entropy();
+        // loop for different alpha slices
+        #pragma omp parallel for num_threads(4) default(none)
+        for (int n = 0; n < nalpha; ++n) {
+            sac_list[n].Metropolis_update_1step();
         }
 
-        // ensure incoherence of samples between bins
-        for (int nbb = 0; nbb < nBetweenBins; ++nbb) {
-            sac.Metropolis_update_1step();
+        // swap configs for different temperature layers
+        if ((warm + 1) % n_swap_pace == 0) {
+            swap_configs_between_layers();
         }
     }
-}
 
-void MonteCarloSAC::analyse_Stats() {
-
-    // alyse data: mean and error
-    for (int bin = 0; bin < nbin; ++bin) {
-        meanChi2 += binChi2[bin] / nstep;
-        errChi2 += pow(binChi2[bin] / nstep, 2);
-        meanEntropy += binEntropy[bin] / nstep;
-        errEntropy += pow(binEntropy[bin] / nstep, 2);
-    }
-
-    meanChi2 /= nbin;
-    errChi2 /= nbin;
-    meanEntropy /= nbin;
-    errEntropy /= nbin;
-
-    errChi2 = pow(errChi2 - meanChi2 * meanChi2, 0.5) / pow(nbin - 1, 0.5);
-    errEntropy = pow(errEntropy - meanEntropy * meanEntropy, 0.5) / pow(nbin - 1, 0.5);
-
-    sac.accept_rate = (double)sac.accept_step / (double)sac.total_step;
-
-    end_t = clock();
-}
-
-void MonteCarloSAC::print_Stats() const {
-
-    const double time = (double)(end_t - begin_t)/CLOCKS_PER_SEC;
-    const int minute = floor(time / 60);
-    const double sec = time - 60 * minute;
-
-    std::cout << "========================================================" << std::endl;
-
-    std::cout << "  Simulation Parameters: " << std::endl
-              << "    Temperature ln(1/theta):      " << log(1/theta) << std::endl
-              << "    Number of constraints nCst:   " << nCst << std::endl
-              << std::endl;
-
-    std::cout.precision(8);
-    std::cout << "  Measurements: " << std::endl
-              << "    average rate of update being accepted: " << sac.accept_rate << std::endl
-              << "    ln(chi^2):    " << meanChi2 << "    err: " << errChi2 << std::endl
-              << "    Entropy S:    " << meanEntropy << "    err: " << errEntropy << std::endl
-              << std::endl;
-    std::cout.precision(-1);
-
-    std::cout << "  Time Cost:      " << minute << " min " << sec << " s" << std::endl;
-
-    std::cout << "========================================================" << std::endl
-              << std::endl;
+    // measuring
+    // TODO
 
 }
 
-void MonteCarloSAC::output_Stats(const std::string &outfilename) const {
-    std::ofstream outfile;
-    outfile.open(outfilename, std::ios::out | std::ios::app);
-
-    outfile.precision(8);
-    outfile << std::right
-            << std::setw(15) << nCst
-            << std::setw(15) << log(1/theta)
-            << std::setw(15) << meanChi2
-            << std::setw(15) << meanEntropy
-            << std::setw(15) << errChi2
-            << std::setw(15) << errEntropy
-            << std::endl;
-    outfile.precision(-1);
-    outfile.close();
-}
-
-void MonteCarloSAC::output_Config(const std::string &outfilename) const {
-    std::ofstream outfile;
-    outfile.open(outfilename, std::ios::out | std::ios::trunc);
-
-    outfile.precision(5);
-    outfile << "Statistic results: " << std::endl
-            << "  average rate of update being accepted: " << sac.accept_rate << std::endl
-            << "  ln(1/theta) = " << log(1/theta)  << "   ln(chi^2) = " << meanChi2 << std::endl << std::endl
-            << std::right
-            << std::setw(15) << "\\omega" << std::setw(20) << "A(\\omega)" << std::endl
-            << std::endl;
-
-    outfile.precision(8);
-    for (int i = 0; i < sac.nOmega; ++i) {
-        outfile << std::right
-                << std::setw(15) << sac.omega_list(i)
-                << std::setw(20) << sac.A_omega(i)
-                << std::endl;
-    }
-    outfile.precision(-1);
-    outfile.close();
-}
-
-void MonteCarloSAC::clear_Stats() {
-    assert(binEntropy.size() == nbin);
-    assert(binChi2.size() == nbin);
-
-    for (int bin = 0; bin < nbin; ++bin) {
-        binEntropy[bin] = 0.0;
-        binChi2[bin] = 0.0;
-    }
-
-    meanEntropy = 0.0;
-    errEntropy = 0.0;
-    meanChi2 = 0.0;
-    errChi2 = 0.0;
-
-    sac.accept_step = 0;
-    sac.total_step = 0;
-    sac.accept_rate = 0.0;
-}
-
-double MonteCarloSAC::calculate_Entropy() {
+void MonteCarloSAC::swap_configs_between_layers() {
     /*
-     *  Definition of entropy S:
-     *
-     *      S = - \sum_{i} A(i) * ln(A(i)) * K(0, i)
-     *
-     *  In SAC, entropy is used to single out the most reasonable spectrum.
+     *  Swap the configurations of adjacent temperature layers with probability
+     *      exp( ( alpha_{p} - alpha_{q} ) * ( H_{p} - H_{q} ) )
+     *  if necessary, record the probability of swapping
      */
-    double s = 0.0;
-    for (int i = 0; i < sac.nOmega; ++i) {
-        s += - sac.A_omega(i) * log(sac.A_omega(i)) * sac.KernelMat(0, i);
+
+    // calculate hamiltonian for each layer
+    std::vector<double> H_list(nalpha);
+    for (int n = 0; n < nalpha; ++n) {
+        sac_list[n].cal_Config_Hamiltonian(H_list[n]);
     }
-    return s;
+
+    // loop for each pair of adjacent temperature layers and swap
+    for (int n = 0; n < nalpha - 1; ++n) {
+
+        const double p = exp( ( alpha_list[n] - alpha_list[n+1] ) * ( H_list[n] - H_list[n+1] ) );
+
+        // FIXME:
+        if ( n == 0 ) {
+            std::cout << p << std::endl;
+        }
+
+        // FIXME: measurement part
+        // calculate and record average accepted rate p
+        if ( p_list[n].empty() ) {
+            p_list[n].emplace_back(std::min(1.0, p));
+        }
+        else {
+            const double tmp_p = ( (double)p_list[n].size() * p_list[n].back() + std::min(1.0, p) ) / ( (double)p_list[n].size() + 1 );
+            p_list[n].emplace_back(tmp_p);
+        }
+
+        // if accepted
+        if (std::bernoulli_distribution(std::min(1.0, p))(gen_MC_SAC)) {
+
+            // swap configs n(x)
+            sac_list[n].n_list.swap(sac_list[n+1].n_list);
+
+            // swap hamiltonian density h(\tau)
+            sac_list[n].h_tau.swap(sac_list[n+1].h_tau);
+
+            // swap hamiltonian H
+            std::swap(H_list[n], H_list[n+1]);
+        }
+    }
 }
-
-MonteCarloSAC::~MonteCarloSAC() {
-    std::cout << "The simulation was done :)" << std::endl;
-}
-
-

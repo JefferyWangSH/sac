@@ -1,5 +1,3 @@
-#include <boost/algorithm/string.hpp>
-#include <boost/lexical_cast.hpp>
 #include <boost/program_options.hpp>
 #include <iostream>
 #include <fstream>
@@ -10,104 +8,87 @@
 
 
 /**
- *  TODO: some problems are list here
- *   1. A(\omega) = A(-\omega) ? if so, modify kernel matrix.
- *   2. Displaced Green's functions obtained from QMC seem not to be anti-periodic. ???
- *   3. Update scheme doesn't work if \omega = 0.
- *   4. Regulate theta and nCst to obtain the most reasonable spectrum;
- *      FIXED: during the annealing process, one should keep theta being of order chi^2,
- *             thus configurations can be updated with moderate accepting rate.
- *   5. ...
+ *  TODO:
+ *   1. Support reading configurations from file
+ *   2. ...
  */
 
 
 /** The main program */
 int main(int argc, char *argv[]) {
 
-    /* default SAC and Measure parameters */
-    int lt = 80;
-    double beta = 4.0;
-    int nOmega = 50;
-    double omegaMin = 0.0, omegaMax = 5.0;
+    /*
+    SAC sac;
 
-    double theta = exp(32);
-    int nCst = 2;
+    sac.set_SAC_params(80, 4, 49, -5, 5, 1);
 
-    int nbin = 40;
-    int nBetweenBins = (int)pow(10, 3);
-    int nstep = 100;
-    int nwarm = (int)(3 * pow(10, 5));
+    sac.set_alpha(exp(-10));
 
-    std::string infile_Green = "../results/benchmark/benchmark_g.txt";
-    std::string infile_A = "../results/configs/config_A_25.0.txt";
-    std::string outfile_Stats = "../results/stats/output.txt";
-    std::string outfile_Config =  "../results/configs/config_A_" + boost::lexical_cast<std::string>(log(theta)) + ".txt";
+    sac.set_QMC_filename("../results/data/gt_l4_lt80_u-4.0_b4.0_k_pi2pi2.txt");
 
-    /* read params from command line */
-    boost::program_options::options_description opts("Program options");
-    boost::program_options::variables_map vm;
+    sac.prepare();
 
-    opts.add_options()
-            ("help,h", "display this information")
-            ("lt,t", boost::program_options::value<int>(&lt), "imaginary-time lattice size of QMC simulation, default: 80")
-            ("beta,b", boost::program_options::value<double>(&beta), "inverse temperature of quantum system, default: 4.0")
-            ("nOmega,n", boost::program_options::value<int>(&nOmega), "number of slices in frequency space, default: 50")
-            ("omegaMin", boost::program_options::value<double>(&omegaMin), "lower bound of frequency space, default: 0.0")
-            ("omegaMax", boost::program_options::value<double>(&omegaMax), "upper bound of frequency space, default: 5.0")
-            ("infile,i", boost::program_options::value<std::string>(&infile_Green), "input filename, default: ../results/benchmark_g.txt");
-    // TODO
-
-    try {
-        boost::program_options::store(parse_command_line(argc, argv, opts), vm);
-    }
-    catch (...) {
-        std::cerr << "Undefined options got from command line."<< std::endl;
-        exit(1);
+    for (int n = 0; n < 50; ++n) {
+        sac.Metropolis_update_1step();
     }
 
-    boost::program_options::notify(vm);
-
-    if (vm.count("help")) {
-        std::cerr << argv[0] << std::endl;
-        std::cerr << opts << std::endl;
-        exit(1);
+    double sum = 0.0;
+    for (int i = 0; i < sac.n_config; ++i) {
+        std::cout << sac.x_list[i] << "   " << sac.n_list[i] << std::endl;
+        sum += sac.n_list[i];
     }
+    std::cout << std::endl;
+    std::cout << sum << std::endl;
+    */
 
+    MonteCarloSAC sac;
 
-    /* start SAC and measuring process */
-    MonteCarloSAC sacMC;
+    sac.set_SAC_params(80, 4, 49, -5, 5, 1);
 
-    sacMC.set_SAC_params(lt, beta, nOmega, omegaMin, omegaMax);
-    sacMC.set_meas_params(nbin, nBetweenBins, nstep, nwarm);
+    sac.set_measure_params(100, 50, 10, 5e5, 100);
 
-    // sacMC.set_input_file(infile_Green, infile_A);
-    sacMC.set_input_file(infile_Green);
+    sac.set_input_file("../results/data/gt_l4_lt80_u-4.0_b4.0_k_pi2pi2.txt");
 
-    sacMC.prepare();
-
-    int nn = 0;
-    theta = exp(32);
-    while (theta > exp(-5)) {
-        // annealing process
-        sacMC.set_sampling_params(theta, nCst);
-
-        sacMC.measure();
-
-        sacMC.analyse_Stats();
-
-        sacMC.print_Stats();
-
-        sacMC.output_Stats("../results/stats/output-cst2.txt");
-
-        if (nn % 5 == 0) {
-            std::stringstream ss;
-            ss << std::setiosflags(std::ios::fixed) << std::setprecision(1) << log(theta);
-            sacMC.output_Config("../results/configs/config_A_" + ss.str() + ".txt");
-        }
-
-        theta *= exp(-0.1);
-        nn++;
+    std::vector<double> alpha_list(60);
+    for (int i = 0; i < 60; ++i) {
+        alpha_list[i] = ( i == 0 )? exp(-6) : alpha_list[i-1] * exp(0.1);
     }
+    sac.set_tempering_profile(60, alpha_list);
+
+    sac.prepare();
+
+    std::chrono::steady_clock::time_point begin_t = std::chrono::steady_clock::now();
+    std::chrono::steady_clock::time_point end_t;
+
+    sac.run_Monte_Carlo();
+
+
+    std::cout << std::endl;
+    for (auto p : sac.p_list[10]) {
+        std::cout << p << std::endl;
+    }
+    std::cout << std::endl;
+
+    end_t = std::chrono::steady_clock::now();
+    auto time = std::chrono::duration_cast<std::chrono::milliseconds>(end_t - begin_t).count();
+    const int minute = std::floor((double)time / 1000 / 60);
+    const double sec = (double)time / 1000 - 60 * minute;
+
+    std::cout << minute << " min " << sec << " s" << std::endl;
+
+
+    std::ofstream outfile;
+    outfile.open("../results/test.txt", std::ios::out | std::ios::trunc);
+
+    std::vector<double> H_list(sac.nalpha);
+    for (int i = 0; i < sac.nalpha; ++i) {
+        sac.sac_list[i].cal_Config_Hamiltonian(H_list[i]);
+        outfile << std::setiosflags(std::ios::right)
+                << std::setw(15) << i
+                << std::setw(15) << log(H_list[i])
+                << std::endl;
+    }
+    outfile.close();
 
     return 0;
 }

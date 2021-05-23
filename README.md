@@ -12,8 +12,8 @@ References
 ----------
 1. K. S. D. Beach  
    Identifying the maximum entropy method as a special limit of stochastic analytic continuation  
-   arXiv:cond-mat/040305  
+   *arXiv:cond-mat/040305*  
 2. Anders W. Sandvik  
    Stochastic method for analytic continuation of quantum Monte   
-   Phys. Rev. B 57, 10287. [DOI](https://doi.org/10.1103/PhysRevB.57.10287)  
+   *Phys. Rev. B 57, 10287.* [DOI](https://doi.org/10.1103/PhysRevB.57.10287)  
 

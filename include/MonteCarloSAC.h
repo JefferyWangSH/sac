@@ -4,11 +4,17 @@
 
 /*
  *  This head file includes MonteCarloSAC class
- *  to obtain spectrum functions of statistical significance
- *  by standard MonteCarlo method with Metropolis algorithm.
+ *  This is the critical part for our SAC calculation.
+ *  By method of parallel tempering and standard Metropolis Monte Carlo algorithm,
+ *  we calculate SACs for large range of temperature profiles in parallel to accelerate simulation.
  */
 
 #include <ctime>
+#include <chrono>
+#include <random>
+
+// random engine
+static std::default_random_engine gen_MC_SAC(time(nullptr));
 
 #include "SAC.h"
 
@@ -16,66 +22,64 @@
 class MonteCarloSAC {
 
 public:
+
+    // temperature ( alpha ) parameters
+    int nalpha = 60;
+    std::vector<double> alpha_list;
+
+    // SACs in different temperature slices and SAC params
+    std::vector<SAC> sac_list;
+    int lt = 80;
+    double beta = 4.0;
+    int n_config = 50;
+    double omega_min = -5;
+    double omega_max = 5;
+    int n_moment = 1;
+
+    // pace of swap
+    int n_swap_pace = 500;
+
     // measuring parameters
     int nbin = 20;
-    int nBetweenBins = 5;
-    int nstep = 100;
-    int nwarm = (int)pow(10, 5);
+    int nstep_1bin = 100;
+    int step_between_bins = 5;
 
-    // SAC class and sampling parameters
-    SAC sac;
-    double theta = exp(7);
-    int nCst = 4;
+    int nwarm = (int) pow(10, 5);
+
+    std::vector<std::vector<double>> p_list;
 
     // input filename
-    std::string infile_Green = "../results/benchmark_g.txt";
+    std::string infile_green = "default.txt";
     std::string infile_A;
 
     // record cpu time
-    time_t begin_t = clock(), end_t = clock();
-
-    // measuring quantities
-    std::vector<double> binEntropy;
-    double meanEntropy = 0.0;
-    double errEntropy = 0.0;
-
-    std::vector<double> binChi2;
-    double meanChi2 = 0.0;
-    double errChi2 = 0.0;
+    std::chrono::steady_clock::time_point begin_t = std::chrono::steady_clock::now();
+    std::chrono::steady_clock::time_point end_t = std::chrono::steady_clock::now();
 
     bool is_read_data = false;
 
     MonteCarloSAC() = default;
 
-    ~MonteCarloSAC();
-
     /* set parameters */
-    void set_SAC_params(int lt, double beta, int nOmega, double omegaMin, double omegaMax);
+    void set_SAC_params(int lt, double beta, int n_config, double omega_min, double omega_max, int n_moment);
 
-    void set_meas_params(int nbin, int nBetweenBins, int nstep, int nwarm);
+    void set_measure_params(int nbin, int nstep_1bin, int step_between_bins, int nwarm, int n_swap_pace);
 
-    void set_sampling_params(const double &theta, const int &nCst);
+    void set_tempering_profile(const int& nalpha, const std::vector<double> &alpha_list);
 
-    void set_input_file(const std::string &infile_Green, const std::string &infile_A = "");
+    void set_input_file(const std::string &infile_green, const std::string &infile_A = "");
 
     /* prepare for measuring: reading data from input file */
     void prepare();
 
-    /* measuring process */
-    void measure();
+    /* Monte Carlo process */
+    void run_Monte_Carlo();
 
-    /* analyse data and output results */
-    void analyse_Stats();
-
-    void print_Stats() const;
-
-    void output_Stats(const std::string &outfilename) const;
+    /* Swap configurations between adjacent temperature slices */
+    void swap_configs_between_layers();
 
     void output_Config(const std::string &outfilename) const;
 
-    void clear_Stats();
-
-    double calculate_Entropy();
 
 private:
 
