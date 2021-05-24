@@ -17,6 +17,7 @@
 static std::default_random_engine gen_MC_SAC(time(nullptr));
 
 #include "SAC.h"
+#include "Measure.h"
 
 
 class MonteCarloSAC {
@@ -31,10 +32,10 @@ public:
     std::vector<SAC> sac_list;
     int lt = 80;
     double beta = 4.0;
-    int n_config = 50;
+    int nconfig = 50;
     double omega_min = -5;
     double omega_max = 5;
-    int n_moment = 1;
+    int nMoment = 1;
 
     // pace of swap
     int n_swap_pace = 500;
@@ -42,9 +43,11 @@ public:
     // measuring parameters
     int nbin = 20;
     int nstep_1bin = 100;
-    int step_between_bins = 5;
+    int step_between_bins = 10;
 
     int nwarm = (int) pow(10, 5);
+
+    Measure measure;
 
     std::vector<std::vector<double>> p_list;
 
@@ -53,8 +56,8 @@ public:
     std::string infile_A;
 
     // record cpu time
-    std::chrono::steady_clock::time_point begin_t = std::chrono::steady_clock::now();
-    std::chrono::steady_clock::time_point end_t = std::chrono::steady_clock::now();
+    std::chrono::steady_clock::time_point begin_t;
+    std::chrono::steady_clock::time_point end_t;
 
     bool is_read_data = false;
 
@@ -77,6 +80,10 @@ public:
 
     /* Swap configurations between adjacent temperature slices */
     void swap_configs_between_layers();
+
+    void print_stats() const;
+
+    void output_stats(const std::string &outfilename);
 
     void output_Config(const std::string &outfilename) const;
 

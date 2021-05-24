@@ -82,6 +82,8 @@ public:
     /* calculate Hamiltonian for a specific configuration */
     void cal_Config_Hamiltonian(double &H);
 
+    friend class measure;
+
 public:
 
     /* calculate Hamiltonian density h(\tau) for a specific configuration */

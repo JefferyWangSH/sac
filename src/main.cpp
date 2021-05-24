@@ -1,7 +1,8 @@
-#include <boost/program_options.hpp>
 #include <iostream>
 #include <fstream>
 #include <iomanip>
+
+#include <boost/program_options.hpp>
 
 #include "SAC.h"
 #include "MonteCarloSAC.h"
@@ -10,85 +11,75 @@
 /**
  *  TODO:
  *   1. Support reading configurations from file
- *   2. ...
+ *   2. class AnalyseSAC to recover fermion spectrum from averaged configs n(x)
+ *   3. update in parallel
+ *   4. ...
  */
 
 
 /** The main program */
 int main(int argc, char *argv[]) {
 
-    /*
-    SAC sac;
+    int lt = 80;
+    double beta = 4;
 
-    sac.set_SAC_params(80, 4, 49, -5, 5, 1);
+    double omega_min = -5.0;
+    double omega_max =  5.0;
 
-    sac.set_alpha(exp(-10));
+    int nMoment = 1;
+    int nalpha = 80;
+    int nconfig = 50;
 
-    sac.set_QMC_filename("../results/data/gt_l4_lt80_u-4.0_b4.0_k_pi2pi2.txt");
+    int nbin = 100;
+    int nstep_1bin = 200;
+    int step_between_bins = 10;
+    int nwarm = 1e6;
+    int n_swap_pace = 50;
 
-    sac.prepare();
 
-    for (int n = 0; n < 50; ++n) {
-        sac.Metropolis_update_1step();
-    }
-
-    double sum = 0.0;
-    for (int i = 0; i < sac.n_config; ++i) {
-        std::cout << sac.x_list[i] << "   " << sac.n_list[i] << std::endl;
-        sum += sac.n_list[i];
-    }
-    std::cout << std::endl;
-    std::cout << sum << std::endl;
-    */
-
+    /** Monte Carlo SAC */
     MonteCarloSAC sac;
 
-    sac.set_SAC_params(80, 4, 49, -5, 5, 1);
+    sac.set_SAC_params(lt, beta, nconfig, omega_min, omega_max, nMoment);
 
-    sac.set_measure_params(100, 50, 10, 5e5, 100);
+    sac.set_measure_params(nbin, nstep_1bin, step_between_bins, nwarm, n_swap_pace);
 
     sac.set_input_file("../results/data/gt_l4_lt80_u-4.0_b4.0_k_pi2pi2.txt");
 
-    std::vector<double> alpha_list(60);
-    for (int i = 0; i < 60; ++i) {
-        alpha_list[i] = ( i == 0 )? exp(-6) : alpha_list[i-1] * exp(0.1);
+    std::vector<double> alpha_list(nalpha);
+    for (int n = 0; n < nalpha; ++n) {
+        alpha_list[n] = ( n == 0 )? exp(-5.0) : alpha_list[n-1] * exp(0.1);
     }
-    sac.set_tempering_profile(60, alpha_list);
+    sac.set_tempering_profile(nalpha, alpha_list);
 
     sac.prepare();
 
-    std::chrono::steady_clock::time_point begin_t = std::chrono::steady_clock::now();
-    std::chrono::steady_clock::time_point end_t;
-
     sac.run_Monte_Carlo();
 
+    sac.output_stats("../results/h-alpha.txt");
 
-    std::cout << std::endl;
+    std::string filename = "../results/configs-alpha.txt";
+    std::ofstream outfile;
+    outfile.open(filename, std::ios::out | std::ios::trunc);
+
+    for (int n = 0; n < nalpha; ++n) {
+        for (int i = 0; i < nconfig; ++i) {
+            outfile << std::setiosflags(std::ios::right)
+                    << std::setw(15) << n
+                    << std::setw(15) << 1.0 / (nconfig + 1) * (i + 1)
+                    << std::setw(15) << sac.measure.n_x_alpha[n][i]
+                    << std::setw(15) << sac.measure.err_n_x_alpha[n][i]
+                    << std::endl;
+        }
+    }
+    outfile.close();
+
     for (auto p : sac.p_list[10]) {
         std::cout << p << std::endl;
     }
     std::cout << std::endl;
 
-    end_t = std::chrono::steady_clock::now();
-    auto time = std::chrono::duration_cast<std::chrono::milliseconds>(end_t - begin_t).count();
-    const int minute = std::floor((double)time / 1000 / 60);
-    const double sec = (double)time / 1000 - 60 * minute;
-
-    std::cout << minute << " min " << sec << " s" << std::endl;
-
-
-    std::ofstream outfile;
-    outfile.open("../results/test.txt", std::ios::out | std::ios::trunc);
-
-    std::vector<double> H_list(sac.nalpha);
-    for (int i = 0; i < sac.nalpha; ++i) {
-        sac.sac_list[i].cal_Config_Hamiltonian(H_list[i]);
-        outfile << std::setiosflags(std::ios::right)
-                << std::setw(15) << i
-                << std::setw(15) << log(H_list[i])
-                << std::endl;
-    }
-    outfile.close();
+    sac.print_stats();
 
     return 0;
 }
