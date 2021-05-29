@@ -211,7 +211,7 @@ void SAC::cal_Config_Hamiltonian(double &H) {
     H = 0;
     for (int t = 0; t < lt; ++t) {
         // FIXME: Mind integrate over tau, here could missing factor \delta \tau
-        H += h_tau[t] * h_tau[t];
+        H += h_tau[t] * h_tau[t] * dtau;
     }
 }
 
@@ -326,7 +326,7 @@ void SAC::Metropolis_update() {
     double delta_H = 0.0;
     for (int t = 0; t < lt; ++t) {
         // FIXME: Mind integrate over tau, here could missing factor \delta \tau
-        delta_H += delta_h[t] * delta_h[t] + 2 * delta_h[t] * h_tau[t];
+        delta_H += ( delta_h[t] * delta_h[t] + 2 * delta_h[t] * h_tau[t]) * dtau;
     }
 
     // accept or reject new configs according to standard Metropolis algorithm
@@ -345,7 +345,7 @@ void SAC::Metropolis_update() {
 
 void SAC::Metropolis_update_1step() {
     /*
-     *  We define one Monte Carlo step as in which we roughly update all points in space of configs
+     *  We define one Monte Carlo step as in which we roughly update all sites in the space of configs
      */
     for (int n = 0; n < ceil((double) n_config / (n_moment + 1)); ++n) {
         Metropolis_update();

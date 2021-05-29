@@ -37,3 +37,4 @@
 build/
 cmake-build-debug/
 results/configs/
+results/data/

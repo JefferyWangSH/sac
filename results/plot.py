@@ -57,14 +57,15 @@ if __name__ == "__main__":
     nalpha = len(p)
     nconfig = len(data[0][0])
 
-    omega_min = -5.0
-    omega_max =  5.0
+    omega_min = -10.0
+    omega_max =  10.0
 
     # critical alpha where phase transition occurs
-    p_c = 30
+    p_c = 50
 
     # recover fermion spectrum from averaged configs n(x)
     x = data[0][0]
+    omega = [ omega_min + (omega_max - omega_min) * _x for _x in x]
     n = []
     n_alpha = [data[alpha][1] for alpha in p]
     
@@ -89,8 +90,10 @@ if __name__ == "__main__":
 
     plt.figure()
 
-    plt.plot(x, n, ms=3, label="n(x)")
+    plt.plot(omega, n, ms=3, label="n(x)")
+    plt.xlabel("${\\omega}$", fontsize = 13)
+    plt.ylabel("${\\rho (\\omega)}$", fontsize = 13)
 
-    # plt.plot(x, data[50][1])
+    # plt.plot(omega, data[80][1])
 
     plt.show()

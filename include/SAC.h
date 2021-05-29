@@ -64,7 +64,7 @@ public:
     /* set up inverse temperature alpha */
     void set_alpha(const double &alpha);
 
-    /* set up filename which contains QMC data*/
+    /* set up filename for reading QMC data*/
     void set_QMC_filename(const std::string &filename);
 
     /* read DQMC data of dynamic measurements from file  */
