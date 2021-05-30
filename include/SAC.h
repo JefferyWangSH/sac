@@ -3,9 +3,9 @@
 #pragma once
 
 /*
- *  This head file includes SAC class to analyse imaginary-time DQMC data.
+ *  This head file includes SAC class to extract fermion spectrum information from imaginary-time DQMC data.
  *  With method of Stochastic Analytic Continuation (SAC), we managed to
- *  obtain the real frequency fermion spectrum functions from imaginary-time Matsubara Green's functions.
+ *  obtain the real frequency fermion spectrum or LDOS from imaginary-time Matsubara Green's functions.
  *  Reference:
  *      K. S. D. Beach, arXiv:cond-mat/0403055
  */
@@ -25,7 +25,7 @@ public:
 
     // slices in configuration space, eventually map to energy space
     // FIXME: mind here not include 0 and 1
-    int n_config = 50;
+    int nconfig = 50;
     double omega_min = -5.0;
     double omega_max = 5.0;
     double delta_n_config = 1.0 / (50 + 1);
@@ -44,10 +44,11 @@ public:
 
     // sampling parameter to accelerate convergence
     // conserve the first ( n_moment ) moments when update configurations
-    int n_moment = 1;
+    int nMoment = 1;
 
     // name of file which contains QMC data
-    std::string filename = "default.txt";
+    std::string filename_greens = "default.txt";
+    std::string filename_configs;
 
     /*
     // params for calculate accepting or swap rate of configurations
@@ -59,28 +60,29 @@ public:
     SAC() = default;
 
     /* set up params for SAC */
-    void set_SAC_params(int lt, double beta, int n_config, double omega_min, double omega_max, int n_moment);
+    void set_SAC_params(int lt, double beta, int nconfig, double omega_min, double omega_max, int nMoment);
 
     /* set up inverse temperature alpha */
-    void set_alpha(const double &alpha);
+    void set_alpha(const double& alpha);
 
     /* set up filename for reading QMC data*/
-    void set_QMC_filename(const std::string &filename);
+    void set_QMC_filename(const std::string& filename);
+
+    void set_Configs_filename(const std::string& filename);
 
     /* read DQMC data of dynamic measurements from file  */
-    void read_QMC_data(const std::string &filename);
+    void read_QMC_data(const std::string& filename);
 
-    /* TODO */
-    void read_Config_data(const std::string &filename = "");
+    void read_Configs_data(const std::string& filename = "");
 
     /* prepare for simulation, including reading data from input file */
-    void prepare();
+    virtual void prepare();
 
     /* perform one step of updates */
     void Metropolis_update_1step();
 
     /* calculate Hamiltonian for a specific configuration */
-    void cal_Config_Hamiltonian(double &H);
+    void cal_Config_Hamiltonian(double& H);
 
     friend class measure;
 

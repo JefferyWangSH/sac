@@ -37,4 +37,5 @@
 build/
 cmake-build-debug/
 results/configs/
+results/configs-omega-5/
 results/data/

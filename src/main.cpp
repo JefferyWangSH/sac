@@ -11,9 +11,8 @@
 /**
  *  TODO:
  *   1. Support reading configurations from file
- *   2. class AnalyseSAC to recover fermion spectrum from averaged configs n(x)
- *   3. update in parallel
- *   4. ...
+ *   2. update in parallel
+ *   3. ...
  */
 
 
@@ -23,26 +22,28 @@ int main(int argc, char *argv[]) {
     int lt = 80;
     double beta = 4;
 
-    double omega_min = -10.0;
-    double omega_max =  10.0;
+    double omega_min = -8.0;
+    double omega_max =  8.0;
 
     int nMoment = 1;
-    int nalpha = 80;
     int nconfig = 100;
 
-    int nbin = 200;
+    int nbin = 2000;
     int nstep_1bin = 100;
     int step_between_bins = 10;
-    int nwarm = 1e5;
-    int n_swap_pace = 50;
+    int nwarm = 3e5;
 
-    /** SAC Test */
+    /** Recover averaged spectrum */
     /*
-    SAC sac;
+    MonteCarloSAC sac;
 
     sac.set_SAC_params(lt, beta, nconfig, omega_min, omega_max, nMoment);
     sac.set_QMC_filename("../results/data/gt_l4_lt80_u-4.0_b4.0_k_pi2pi2.txt");
-    sac.set_alpha(0);
+
+    sac.set_Configs_filename("../results/configs/alpha_2.50.txt");
+
+    double alpha = exp(-5);
+    sac.set_alpha(alpha);
 
     sac.prepare();
 
@@ -61,50 +62,47 @@ int main(int argc, char *argv[]) {
     std::cout << H << std::endl;
     */
 
-    /** Monte Carlo SAC */
+    /** Monte Carlo procedure */
 
     MonteCarloSAC sac;
 
     sac.set_SAC_params(lt, beta, nconfig, omega_min, omega_max, nMoment);
 
-    sac.set_measure_params(nbin, nstep_1bin, step_between_bins, nwarm, n_swap_pace);
+    sac.set_measure_params(nbin, nstep_1bin, step_between_bins, nwarm);
 
-    sac.set_input_file("../results/data/LDOS_l4_lt80_u-4.0_b4.0.txt");
+    sac.set_QMC_filename("../results/data/gt_l4_lt80_u-4.0_b4.0_k_pi2pi2.txt");
 
-    std::vector<double> alpha_list(nalpha);
-    for (int n = 0; n < nalpha; ++n) {
-        alpha_list[n] = ( n == 0 )? exp(0) : alpha_list[n-1] * exp(0.1);
+    double alpha = exp(-29.9);
+    double dalpha = exp(0.1);
+
+    for (int n = 0; n < 400; ++n) {
+
+        sac.set_alpha(alpha);
+
+        std::stringstream ss;
+        ss << std::setiosflags(std::ios::fixed) << std::setprecision(2) << log(alpha) - log(dalpha);
+        std::string lnAlpha_old = ss.str();
+        ss.str("");
+        std::string infile_configs = "../results/configs/alpha_" + lnAlpha_old + ".txt";
+        sac.set_Configs_filename(infile_configs);
+
+        sac.prepare();
+
+        sac.run_Monte_Carlo();
+
+        sac.print_stats();
+
+        ss << std::setiosflags(std::ios::fixed) << std::setprecision(2) << log(alpha);
+        std::string lnAlpha = ss.str();
+        ss.str("");
+        std::string outfile_configs = "../results/configs/alpha_" + lnAlpha + ".txt";
+        sac.output_Configs(outfile_configs);
+
+        std::string outfile_hamilton = "../results/h-alpha.txt";
+        sac.output_stats(outfile_hamilton);
+
+        alpha *= dalpha;
     }
-    sac.set_tempering_profile(nalpha, alpha_list);
-
-    sac.prepare();
-
-    sac.run_Monte_Carlo();
-
-    sac.output_stats("../results/h-alpha.txt");
-
-    std::string filename = "../results/configs-alpha.txt";
-    std::ofstream outfile;
-    outfile.open(filename, std::ios::out | std::ios::trunc);
-
-    for (int n = 0; n < nalpha; ++n) {
-        for (int i = 0; i < nconfig; ++i) {
-            outfile << std::setiosflags(std::ios::right)
-                    << std::setw(15) << n
-                    << std::setw(15) << 1.0 / (nconfig + 1) * (i + 1)
-                    << std::setw(15) << sac.measure.n_x_alpha[n][i]
-                    << std::setw(15) << sac.measure.err_n_x_alpha[n][i]
-                    << std::endl;
-        }
-    }
-    outfile.close();
-
-    for (auto p : sac.p_list[10]) {
-        std::cout << p << std::endl;
-    }
-    std::cout << std::endl;
-
-    sac.print_stats();
 
     return 0;
 }

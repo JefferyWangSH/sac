@@ -7,72 +7,95 @@
 #include "ProgressBar.hpp"
 
 
-void MonteCarloSAC::set_SAC_params(int _lt, double _beta, int _nconfig, double _omega_min, double _omega_max, int _nMoment) {
-    assert( _lt > 0 && _beta > 0 );
-    assert( _nconfig > 0 );
-    assert( _omega_min < _omega_max );
-
-    this->lt = _lt;
-    this->beta = _beta;
-    this->nconfig = _nconfig;
-    this->omega_min = _omega_min;
-    this->omega_max = _omega_max;
-    this->nMoment = _nMoment;
-}
-
-void MonteCarloSAC::set_tempering_profile(const int &_nalpha, const std::vector<double> &_alpha_list) {
-    assert( _alpha_list.size() == _nalpha );
-
-    this->nalpha = _nalpha;
-
-    // initialize alpha profiles
-    this->alpha_list.clear();
-    this->alpha_list.reserve(_nalpha);
-    for (int i = 0; i < _nalpha; ++i) {
-        this->alpha_list.emplace_back(_alpha_list[i]);
-    }
-    this->alpha_list.shrink_to_fit();
-}
-
-void MonteCarloSAC::set_measure_params(int _nbin, int _nstep_1bin, int _step_between_bins, int _nwarm, int _n_swap_pace) {
+void MonteCarloSAC::set_measure_params(int _nbin, int _nstep_1bin, int _step_between_bins, int _nwarm) {
     this->nbin = _nbin;
     this->nstep_1bin = _nstep_1bin;
     this->step_between_bins = _step_between_bins;
     this->nwarm = _nwarm;
-    this->n_swap_pace = _n_swap_pace;
-}
-
-void MonteCarloSAC::set_input_file(const std::string &_infile_green, const std::string &_infile_A) {
-    this->infile_green = _infile_green;
-    this->infile_A = _infile_A;
 }
 
 void MonteCarloSAC::prepare() {
     /*
-     *  preparations for parallel-tempering monte carlo procedure
+     *  allocate memory for SAC and initialize temp vector and matrices for simulation use,
      */
 
-    // prepare for SACs
-    // TODO: construct function by copy
-    sac_list.clear();
-    sac_list.reserve(nalpha);
-    for (int n = 0; n < nalpha; ++n) {
-        sac_list.emplace_back();
-        sac_list[n].set_SAC_params(lt, beta, nconfig, omega_min, omega_max, nMoment);
-        sac_list[n].set_alpha(alpha_list[n]);
-        sac_list[n].set_QMC_filename(infile_green);
-        sac_list[n].prepare();
+    // clear previous data
+    x_list.clear();
+    n_list.clear();
+    omega_list.clear();
+    A_config.clear();
+    tau_list.clear();
+    g_tau.clear();
+    sigma_tau.clear();
+    h_tau.clear();
+    kernel.clear();
+
+    // reserve memory for vectors
+    x_list.reserve(nconfig);
+    n_list.reserve(nconfig);
+    omega_list.reserve(nconfig);
+    A_config.reserve(nconfig);
+
+    for (int i = 0; i < nconfig; ++i){
+        x_list.emplace_back(0.0);
+        n_list.emplace_back(0.0);
+        omega_list.emplace_back(0.0);
+        A_config.emplace_back(0.0);
     }
 
-    p_list.clear();
-    p_list.reserve(nalpha - 1);
-    for (int n = 0; n < nalpha - 1; ++n) {
-        p_list.emplace_back();
+    tau_list.reserve(lt);
+    g_tau.reserve(lt);
+    sigma_tau.reserve(lt);
+    h_tau.reserve(lt);
+    kernel.reserve(lt);
+
+    for (int t = 0; t < lt; ++t) {
+        tau_list.emplace_back(0.0);
+        g_tau.emplace_back(0.0);
+        sigma_tau.emplace_back(0.0);
+        h_tau.emplace_back(0.0);
+        kernel.emplace_back(nconfig, 0.0);
     }
-    p_list.shrink_to_fit();
+
+    // shrink to fit
+    x_list.shrink_to_fit();
+    n_list.shrink_to_fit();
+    omega_list.shrink_to_fit();
+    A_config.shrink_to_fit();
+    tau_list.shrink_to_fit();
+    g_tau.shrink_to_fit();
+    sigma_tau.shrink_to_fit();
+    h_tau.shrink_to_fit();
+    kernel.shrink_to_fit();
+
+    // initialize tau
+    for (int t = 0; t < lt; ++t) {
+        tau_list[t] = (double)(t + 1) / lt * beta;
+    }
+
+    // initialize x and omega
+    for (int i = 0; i < nconfig; ++i) {
+        x_list[i] = delta_n_config * (i + 1);
+        omega_list[i] = omega_min + ( omega_max - omega_min ) * x_list[i];
+    }
+
+    read_QMC_data(filename_greens);
+    read_Configs_data(filename_configs);
+
+    // calculate kernel matrix
+    for (int t = 0; t < lt; ++t) {
+        const double tau = tau_list[t];
+        for (int i = 0; i < nconfig; ++i) {
+            const double omega = omega_list[i];
+            kernel[t][i] = exp(- tau * omega) / (1 + exp(- beta * omega));
+        }
+    }
+
+    // calculate hamiltonian density h(\tau) for default configurations
+    cal_Config_Hamiltonian_Density(h_tau);
 
     // prepare for measuring
-    measure.resize(nbin, nalpha, nconfig);
+    measure.resize(nbin, nconfig);
 }
 
 void MonteCarloSAC::run_Monte_Carlo() {
@@ -85,62 +108,40 @@ void MonteCarloSAC::run_Monte_Carlo() {
 
     // warm up process
     // progress bar
-    // progresscpp::ProgressBar progress_bar_warm(nwarm, 40, '#', '-');
+    progresscpp::ProgressBar progress_bar_warm(nwarm, 40, '#', '-');
 
     for (int warm = 0; warm < nwarm; ++warm) {
 
-        // loop for different alpha slices
-        #pragma omp parallel for num_threads(4) default(none)
-        for (int n = 0; n < nalpha; ++n) {
-            sac_list[n].Metropolis_update_1step();
-        }
+        // one Monte Carlo step
+        Metropolis_update_1step();
 
-        // swap configs for different temperature layers
-        if ((warm + 1) % n_swap_pace == 0) {
-            swap_configs_between_layers();
-        }
-
-        //++progress_bar_warm;
-        if ( warm % 10 == 0 ) {
-            // std::cout << "Warm-up progress:   ";
-            //progress_bar_warm.display();
+        ++progress_bar_warm;
+        if ( warm % 5 == 0 ) {
+            std::cout << " Warm-up progress:   ";
+            progress_bar_warm.display();
         }
     }
-    // std::cout << "Warm-up progress:   ";
-    // progress_bar_warm.done();
+    std::cout << " Warm-up progress:   ";
+    progress_bar_warm.done();
 
     // clear measuring data previously
     measure.clear_tmp_stats();
 
     // measuring and loop for bins
-    // progresscpp::ProgressBar progress_bar_measure(nbin * nstep_1bin, 40, '#', '-');
+    progresscpp::ProgressBar progress_bar_measure(nbin * nstep_1bin, 40, '#', '-');
 
     for (int bin = 0; bin < nbin; ++bin) {
 
         for (int step = 0; step < nstep_1bin; ++step) {
 
-            #pragma omp parallel for num_threads(4) default(none)
-            for (int n = 0; n < nalpha; ++n) {
-                sac_list[n].Metropolis_update_1step();
-            }
+            Metropolis_update_1step();
+
             measure.measure(*this);
 
-            if ( ( step + 1 ) % n_swap_pace == 0 ) {
-                swap_configs_between_layers();
-
-                // update for some steps shortly after swapping
-                for (int i = 0; i < step_between_bins; ++i) {
-                    #pragma omp parallel for num_threads(4) default(none)
-                    for (int n = 0; n < nalpha; ++n) {
-                        sac_list[n].Metropolis_update_1step();
-                    }
-                }
-            }
-
-            // ++progress_bar_measure;
-            if ( step % 10 == 0 ) {
-                // std::cout << "Measuring progress: ";
-                // progress_bar_measure.display();
+            ++progress_bar_measure;
+            if ( step % 5 == 0 ) {
+                std::cout << " Measuring progress: ";
+                progress_bar_measure.display();
             }
         }
 
@@ -152,65 +153,15 @@ void MonteCarloSAC::run_Monte_Carlo() {
 
         // avoid correlation between bins
         for (int i = 0; i < step_between_bins; ++i) {
-            #pragma omp parallel for num_threads(4) default(none)
-            for (int n = 0; n < nalpha; ++n) {
-                sac_list[n].Metropolis_update_1step();
-            }
+            Metropolis_update_1step();
         }
     }
-    // std::cout << "Measuring progress: ";
-    // progress_bar_measure.done();
+    std::cout << " Measuring progress: ";
+    progress_bar_measure.done();
 
     measure.analyse_stats();
 
     end_t = std::chrono::steady_clock::now();
-}
-
-void MonteCarloSAC::swap_configs_between_layers() {
-    /*
-     *  Swap the configurations of adjacent temperature layers with probability
-     *      exp( ( alpha_{p} - alpha_{q} ) * ( H_{p} - H_{q} ) )
-     *  if necessary, record the probability of swapping
-     */
-
-    // calculate hamiltonian for each layer
-    std::vector<double> H_list(nalpha);
-    for (int n = 0; n < nalpha; ++n) {
-        sac_list[n].cal_Config_Hamiltonian(H_list[n]);
-    }
-
-    // loop for each pair of adjacent temperature layers and swap
-    for (int n = 0; n < nalpha - 1; ++n) {
-
-        const double p = exp( ( alpha_list[n] - alpha_list[n+1] ) * ( H_list[n] - H_list[n+1] ) );
-
-        if ( n == 14 ) {
-            std::cout << p << std::endl;
-        }
-
-        // FIXME: measurement part
-        // calculate and record average accepted rate p
-        if ( p_list[n].empty() ) {
-            p_list[n].emplace_back(std::min(1.0, p));
-        }
-        else {
-            const double tmp_p = ( (double)p_list[n].size() * p_list[n].back() + std::min(1.0, p) ) / ( (double)p_list[n].size() + 1 );
-            p_list[n].emplace_back(tmp_p);
-        }
-
-        // if accepted
-        if (std::bernoulli_distribution(std::min(1.0, p))(gen_MC_SAC)) {
-
-            // swap configs n(x)
-            sac_list[n].n_list.swap(sac_list[n+1].n_list);
-
-            // swap hamiltonian density h(\tau)
-            sac_list[n].h_tau.swap(sac_list[n+1].h_tau);
-
-            // swap hamiltonian H
-            std::swap(H_list[n], H_list[n+1]);
-        }
-    }
 }
 
 void MonteCarloSAC::print_stats() const {
@@ -220,21 +171,56 @@ void MonteCarloSAC::print_stats() const {
     const int minute = std::floor((double)time / 1000 / 60);
     const double sec = (double)time / 1000 - 60 * minute;
 
-    // Todo: print data
+    std::cout << std::setiosflags(std::ios::left)
+              << "  ln ( \\alpha ): " << std::setw(8) << log(alpha)
+              << "  Goodness of fit: " << std::setw(8) << log(measure.mean_Hamilton)
+              << std::endl;
 
     // print cpu time
-    std::cout << "Time Cost:    " << minute << " min " << sec << " s" << std::endl;
+    std::cout << "  Time Cost:    " << minute << " min " << sec << " s" << std::endl;
 }
 
-void MonteCarloSAC::output_stats(const std::string &outfilename) {
+void MonteCarloSAC::output_stats(const std::string& filename) const {
     std::ofstream outfile;
-    outfile.open(outfilename, std::ios::out | std::ios::trunc);
+    outfile.open(filename, std::ios::out | std::ios::app);
 
-    for (int n = 0; n < nalpha; ++n) {
+    outfile << std::setiosflags(std::ios::right)
+            << std::setw(15) << log(alpha)
+            << std::setw(15) << measure.mean_Hamilton
+            << std::setw(15) << measure.err_Hamilton
+            << std::setw(15) << log(measure.mean_Hamilton)
+            << std::setw(15) << measure.err_Hamilton / measure.mean_Hamilton
+            << std::endl;
+    outfile.close();
+}
+
+void MonteCarloSAC::output_Configs(const std::string& filename) const {
+    std::ofstream outfile;
+    outfile.open(filename, std::ios::out | std::ios::trunc);
+
+    for (int i = 0; i < nconfig; ++i) {
         outfile << std::setiosflags(std::ios::right)
-                << std::setw(15) << n
-                << std::setw(15) << log(measure.H_alpha[n])
-                << std::setw(15) << measure.err_H_alpha[n] / measure.H_alpha[n]
+                << std::setw(15) << i + 1
+                << std::setw(15) << measure.mean_n_x[i]
+                << std::setw(15) << measure.err_n_x[i]
+                << std::endl;
+    }
+    outfile.close();
+    std::cout << "=====================================================================" << std::endl
+              << " configs have been written into " + filename + "." << std::endl
+              << "=====================================================================" << std::endl;
+    std::cout << std::endl;
+}
+
+void MonteCarloSAC::output_averaged_spectrum(const std::string& filename) const {
+    std::ofstream outfile;
+    outfile.open(filename, std::ios::out | std::ios::trunc);
+
+    for (int i = 0; i < nconfig; ++i) {
+        outfile << std::setiosflags(std::ios::right)
+                << std::setw(15) << omega_list[i]
+                << std::setw(15) << measure.mean_n_x[i]
+                << std::setw(15) << measure.err_n_x[i]
                 << std::endl;
     }
     outfile.close();
