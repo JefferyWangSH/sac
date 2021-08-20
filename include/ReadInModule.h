@@ -43,8 +43,8 @@ public:
     Eigen::VectorXd tau_seq_raw, corr_mean_seq_raw, corr_err_seq_raw;
     Eigen::VectorXd tau_seq, corr_mean_seq, corr_err_seq;
 
-    std::vector<std::vector<double>> corr_tau_bin;
-    std::vector<std::vector<double>> sample_bootstrap;
+    Eigen::MatrixXd corr_tau_bin;
+    Eigen::MatrixXd sample_bootstrap;
 
 
 public:

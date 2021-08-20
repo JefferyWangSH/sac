@@ -38,23 +38,14 @@ void ReadInModule::allocate_memory() {
     this->rotate_mat.resize(cov_mat_dim, cov_mat_dim);
     this->cov_eig.resize(cov_mat_dim);
 
-    this->corr_tau_bin.reserve(nbin);
-    for (int bin; bin < nbin; ++bin) {
-        this->corr_tau_bin.emplace_back(lt, 0.0);
-    }
-
-    this->sample_bootstrap.reserve(num_bootstrap);
-    for (int num = 0; num < num_bootstrap; num++) {
-        this->sample_bootstrap.emplace_back(lt, 0.0);
-    }
+    this->corr_tau_bin.resize(nbin, lt);
+    this->sample_bootstrap.resize(num_bootstrap, lt);
 }
 
 void ReadInModule::deallocate_memory() {
-    // free objects which cost large memory
-    this->corr_tau_bin.clear();
-    this->sample_bootstrap.clear();
-    this->corr_tau_bin.shrink_to_fit();
-    this->sample_bootstrap.shrink_to_fit();
+    // free useless objects which cost large memory
+    this->corr_tau_bin.resize(0, 0);
+    this->sample_bootstrap.resize(0, 0);
 }
 
 void ReadInModule::read_tau_from_file(const std::string &infile_tau_seq) {
@@ -112,9 +103,7 @@ void ReadInModule::read_corr_from_file(const std::string &infile_g_bin) {
     this->nbin_total = boost::lexical_cast<int>(data[0]);
 
     // clear previous data
-    for (int bin = 0; bin < nbin; ++bin) {
-        std::fill(corr_tau_bin[bin].begin(), corr_tau_bin[bin].end(), 0.0);
-    }
+    corr_tau_bin = Eigen::MatrixXd::Zero(nbin, lt);
 
     for (int bin = 0; bin < nbin; ++bin) {
         for (int rebin = 0; rebin < rebin_pace; ++rebin) {
@@ -123,13 +112,11 @@ void ReadInModule::read_corr_from_file(const std::string &infile_g_bin) {
                 getline(infile, line);
                 boost::split(data, line, boost::is_any_of(" "), boost::token_compress_on);
                 data.erase(std::remove(std::begin(data), std::end(data), ""), std::end(data));
-                corr_tau_bin[bin][l] += boost::lexical_cast<double>(data[0]);
+                corr_tau_bin(bin, l) += boost::lexical_cast<double>(data[0]);
             }
         }
-        for (int l = 0; l < lt; ++l) {
-            corr_tau_bin[bin][l] /= rebin_pace;
-        }
     }
+    corr_tau_bin /= rebin_pace;
     infile.close();
 }
 
@@ -140,10 +127,7 @@ void ReadInModule::compute_corr_means() {
 
     // calculate means of correlations
     for (int l = 0; l < lt; ++l) {
-        for(int bin = 0; bin < nbin; bin++) {
-            corr_mean_seq_raw[l] += corr_tau_bin[bin][l];
-        }
-        corr_mean_seq_raw[l] /= nbin;
+        corr_mean_seq_raw[l] = corr_tau_bin.col(l).sum() / nbin;
     }
 
     // generate bootstrap samples
@@ -151,18 +135,17 @@ void ReadInModule::compute_corr_means() {
         for (int l = 0; l < lt; ++l) {
             for(int bin = 0; bin < nbin; bin++) {
                 std::uniform_int_distribution<> rand_bin(0, nbin - 1);
-                sample_bootstrap[i][l] += corr_tau_bin[rand_bin(rand_engine_readin)][l];
+                sample_bootstrap(i, l) += corr_tau_bin(rand_bin(rand_engine_readin), l);
             }
-            sample_bootstrap[i][l] /= nbin;
         }
     }
+    sample_bootstrap /= nbin;
 
     // compute corr-errors of correlations
     for (int l = 0; l < lt; ++l) {
-        for (int num = 0; num < num_bootstrap; ++num) {
-            corr_err_seq_raw[l] += pow(sample_bootstrap[num][l] - corr_mean_seq_raw[l], 2);
-        }
-        corr_err_seq_raw[l] = pow(corr_err_seq_raw[l] / num_bootstrap, 0.5);
+        corr_err_seq_raw[l] = ( (sample_bootstrap.col(l).array() - corr_mean_seq_raw[l])
+                              * (sample_bootstrap.col(l).array() - corr_mean_seq_raw[l]) ).sum();
+        corr_err_seq_raw[l] = sqrt(corr_err_seq_raw[l] / num_bootstrap);
     }
 }
 
@@ -170,24 +153,19 @@ void ReadInModule::compute_cov_matrix() {
     // record static correlation G(0), rescale such that G(0) = 1.0
     this->g0 = corr_mean_seq_raw[0];
 
-    for (int num = 0; num < num_bootstrap; ++num) {
-        for (int l = 0; l < lt; ++l) {
-            sample_bootstrap[num][l] /= g0;
-        }
-    }
     // FIXME: discard data with poor quality
     corr_mean_seq = corr_mean_seq_raw.tail(corr_mean_seq_raw.size() - 1) / g0;
     corr_err_seq = corr_err_seq_raw.tail(corr_err_seq_raw.size() - 1) / g0;
+    sample_bootstrap /= g0;
 
     // clear previous data
     cov_mat = Eigen::MatrixXd::Zero(cov_mat_dim, cov_mat_dim);
 
     for (int i = 0; i < cov_mat_dim; ++i) {
         for (int j = 0; j < cov_mat_dim; ++j) {
-            for (int num = 0; num < num_bootstrap; ++num) {
-                // fixed G(0), not included in the data set defining chi square
-                cov_mat(i, j) += ( sample_bootstrap[num][i+1] - corr_mean_seq[i] ) * ( sample_bootstrap[num][j+1] - corr_mean_seq[j] );
-            }
+            // fixed G(0), not included in the data set defining chi square
+            cov_mat(i, j) = ( (sample_bootstrap.col(i+1).array() - corr_mean_seq[i])
+                            * (sample_bootstrap.col(j+1).array() - corr_mean_seq[j]) ).sum();
         }
     }
 
