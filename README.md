@@ -37,6 +37,6 @@ More details about `SAC` algorithm can be found in [references](#references).
 
 The code is free software under GPL-3.0 License.
 
-And I would like to gratefully thank Prof. Hui Shao and Zheng Zhou for their generous sharing of their source codes in Fortran.
+I would like to sincerely thank Prof. Hui Shao and Zheng Zhou for the generous sharing of their source codes in Fortran.
 
 If any questions, please feel free to contact me via email 17307110117@fudan.edu.cn.

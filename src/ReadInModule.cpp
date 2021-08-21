@@ -19,7 +19,6 @@ void ReadInModule::set_params(int _lt, double _beta, int _nbin, int _rebin_pace,
     this->rebin_pace = _rebin_pace;
     this->nbin = _nbin / _rebin_pace;
     this->num_bootstrap = _num_boostrap;
-    this->cov_mat_dim = _lt - 1;                // FIXME: discard data with poor quality
 
     allocate_memory();
 }
@@ -30,14 +29,6 @@ void ReadInModule::allocate_memory() {
     this->corr_mean_seq_raw.resize(lt);
     this->corr_err_seq_raw.resize(lt);
 
-    this->tau_seq.resize(cov_mat_dim);
-    this->corr_mean_seq.resize(cov_mat_dim);
-    this->corr_err_seq.resize(cov_mat_dim);
-
-    this->cov_mat.resize(cov_mat_dim, cov_mat_dim);
-    this->rotate_mat.resize(cov_mat_dim, cov_mat_dim);
-    this->cov_eig.resize(cov_mat_dim);
-
     this->corr_tau_bin.resize(nbin, lt);
     this->sample_bootstrap.resize(num_bootstrap, lt);
 }
@@ -46,6 +37,14 @@ void ReadInModule::deallocate_memory() {
     // free useless objects which cost large memory
     this->corr_tau_bin.resize(0, 0);
     this->sample_bootstrap.resize(0, 0);
+
+    this->tau_seq_raw.resize(0);
+    this->corr_mean_seq_raw.resize(0);
+    this->corr_err_seq_raw.resize(0);
+
+    this->tau_seq.resize(0);
+    this->corr_mean_seq.resize(0);
+    this->corr_err_seq.resize(0);
 }
 
 void ReadInModule::read_tau_from_file(const std::string &infile_tau_seq) {
@@ -153,9 +152,12 @@ void ReadInModule::compute_cov_matrix() {
     // record static correlation G(0), rescale such that G(0) = 1.0
     this->g0 = corr_mean_seq_raw[0];
 
-    // FIXME: discard data with poor quality
-    corr_mean_seq = corr_mean_seq_raw.tail(corr_mean_seq_raw.size() - 1) / g0;
-    corr_err_seq = corr_err_seq_raw.tail(corr_err_seq_raw.size() - 1) / g0;
+    // discard correlations with poor data quality
+    std::vector<int> selected_tau = discard_poor_quality_data();
+
+    // rescaled by G(0)
+    corr_mean_seq /= g0;
+    corr_err_seq /= g0;
     sample_bootstrap /= g0;
 
     // clear previous data
@@ -164,8 +166,8 @@ void ReadInModule::compute_cov_matrix() {
     for (int i = 0; i < cov_mat_dim; ++i) {
         for (int j = 0; j < cov_mat_dim; ++j) {
             // fixed G(0), not included in the data set defining chi square
-            cov_mat(i, j) = ( (sample_bootstrap.col(i+1).array() - corr_mean_seq[i])
-                            * (sample_bootstrap.col(j+1).array() - corr_mean_seq[j]) ).sum();
+            cov_mat(i, j) = ( (sample_bootstrap.col(selected_tau[i]).array() - corr_mean_seq[i])
+                            * (sample_bootstrap.col(selected_tau[j]).array() - corr_mean_seq[j]) ).sum();
         }
     }
 
@@ -174,6 +176,45 @@ void ReadInModule::compute_cov_matrix() {
     //   T * C * T^dagger -> Eigen space
     // where T is rotation matrix, which is orthogonal.
     Eigen::MatrixXd u(cov_mat_dim, cov_mat_dim), v(cov_mat_dim, cov_mat_dim);
-    mkl_lapack_dgesvd(cov_mat_dim, cov_mat_dim, cov_mat, u, cov_eig, v);
-    rotate_mat = u.transpose();
+    mkl_lapack_dsyev(cov_mat_dim, cov_mat, cov_eig, rotate_mat);
+
+    // alternative method with lower accuracy, using SVD
+    // mkl_lapack_dgesvd(cov_mat_dim, cov_mat_dim, cov_mat, u, cov_eig, v);
+    // rotate_mat = u.transpose();
+}
+
+std::vector<int> ReadInModule::discard_poor_quality_data() {
+
+    // first determine dimension of covariance matrix
+    // discard correlations with poor data quality
+    this->cov_mat_dim = 0;
+    std::vector<int> selected_tau;
+    selected_tau.reserve(lt);
+
+    // static correlation G(0) excluded
+    for (int l = 1; l < lt; ++l) {
+        if ( abs(corr_err_seq_raw[l] / corr_mean_seq_raw[l]) < 0.1) {
+            cov_mat_dim++;
+            selected_tau.emplace_back(l);
+        }
+    }
+    selected_tau.shrink_to_fit();
+    assert( selected_tau.size() == cov_mat_dim );
+
+    // allocate memory
+    this->tau_seq.resize(cov_mat_dim);
+    this->corr_mean_seq.resize(cov_mat_dim);
+    this->corr_err_seq.resize(cov_mat_dim);
+    this->cov_mat.resize(cov_mat_dim, cov_mat_dim);
+    this->cov_eig.resize(cov_mat_dim);
+    this->rotate_mat.resize(cov_mat_dim, cov_mat_dim);
+
+    for (int i = 0; i < cov_mat_dim; ++i) {
+        const int l = selected_tau[i];
+        tau_seq[i] = tau_seq_raw[l];
+        corr_mean_seq[i] = corr_mean_seq_raw[l];
+        corr_err_seq[i] = corr_err_seq_raw[l];
+    }
+
+    return selected_tau;
 }

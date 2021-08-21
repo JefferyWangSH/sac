@@ -11,6 +11,12 @@
  *        ( The SAC calculation is performed in eigen space of the covariance matrix. )
  */
 
+/*
+ * TODO：
+ *   1. use pointers for memory management
+ *   2. discard correlations with poor data quality (done)
+ *   3. optimize diagonalizing process, using dsyev (done)
+ */
 
 #include <string>
 #include <random>
@@ -31,7 +37,7 @@ public:
     int nbin{};                     // number of bins (after rebin)
     int nbin_total{};               // number of bins (before rebin)
     int rebin_pace{};               // rebin factor (pace of rebin), 1 for all bins
-    int num_bootstrap{};             // number of bootstrap samples
+    int num_bootstrap{};            // number of bootstrap samples
     double beta{};                  // inverse temperature beta
     double g0{};                    // static correlation at tau = 0, worked as normalization parameter
 
@@ -70,7 +76,8 @@ public:
     /* compute covariance matrix C_ij */
     void compute_cov_matrix();
 
-//    void discard_poor_quality_data();
+    /* discard correlations with poor data quality */
+    std::vector<int> discard_poor_quality_data();
 
 
 };

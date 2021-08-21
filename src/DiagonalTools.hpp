@@ -1,3 +1,7 @@
+#ifndef DIAGONAL_TOOLS_HPP
+#define DIAGONAL_TOOLS_HPP
+#pragma once
+
 /**
  *  This source file includes some diagonalizing tools with C++/Eigen interface
  *  for diagonalizing real matrices using mkl and lapack.
@@ -41,7 +45,7 @@ void mkl_lapack_dgesvd(const int &m, const int &n, const Eigen::MatrixXd &a, Eig
     double a_[lda * n];
     double superb[ldu * lda];
     for (int i = 0; i < lda * n; ++i) {
-        a_[i] = a(i / lda, i % lda);
+        a_[i] = a(i/lda, i%lda);
     }
 
     // Compute SVD
@@ -66,11 +70,44 @@ void mkl_lapack_dgesvd(const int &m, const int &n, const Eigen::MatrixXd &a, Eig
  * where T is rotation matrix, which is orthogonal;
  *       S is diagonal matrix with eigenvalues being diagonal elements.
  *
- * @param n -> number of rows/cols.
+ * @param N -> number of rows/cols.
  * @param a -> arbitrary N * N real symmetric matrix to be solved.
- * @param s -> diagonal eigen matrix, descending sorted.
+ * @param s -> diagonal eigen matrix.
  * @param T -> rotation matrix, columns being eigenstates.
  */
-void mkl_lapack_dsyev(const int &n, const Eigen::MatrixXd &a, Eigen::MatrixXd &s, Eigen::MatrixXd &T) {
-//    LAPACKE_dsyev();
+void mkl_lapack_dsyev(const int &N, const Eigen::MatrixXd &a, Eigen::VectorXd &s, Eigen::MatrixXd &T) {
+    assert( a.rows() == N );
+    assert( a.cols() == N );
+    // make sure that a is symmetric
+    for (int i = 0; i < N; ++i) {
+        for (int j = 0; j < N; ++j) {
+            assert( a(i, j) == a(j, i) );
+        }
+    }
+
+    // Locals params
+    lapack_int n = N, lda = N, info;
+    double w[N];
+    double a_[lda * n];
+    const Eigen::MatrixXd a_upper = a.triangularView<Eigen::Upper>();
+
+    // Convert eigen matrix to array ( upper triangular )
+    for (int i = 0; i < lda * n; ++i) {
+        a_[i] = a_upper(i/lda, i%lda);
+    }
+
+    // Solve eigen problem
+    info = LAPACKE_dsyev( LAPACK_ROW_MAJOR, 'V', 'U', n, a_, lda, w );
+
+    // Check for convergence
+    if( info > 0 ) {
+        printf( "The algorithm failed to compute eigenvalues.\n" );
+        exit( 1 );
+    }
+
+    // Convert eigenvalues and eigenvectors to eigen style
+    s = Eigen::Map<Eigen::Matrix<double, 1, Eigen::Dynamic, Eigen::RowMajor>>(w, 1, n);
+    T = Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::ColMajor>>(a_, n, n);
 }
+
+#endif //DIAGONAL_TOOLS_HPP

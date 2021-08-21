@@ -1,5 +1,5 @@
-#ifndef SAC_SAC_H
-#define SAC_SAC_H
+#ifndef SAC_H
+#define SAC_H
 #pragma once
 
 /**
@@ -13,7 +13,6 @@
 
 
 #include <random>
-#include "ReadInModule.h"
 
 // random engine
 static std::default_random_engine rand_engine_sac(time(nullptr));
@@ -25,4 +24,4 @@ public:
 
 };
 
-#endif //SAC_SAC_H
+#endif //SAC_H
