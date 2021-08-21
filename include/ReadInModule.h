@@ -49,15 +49,15 @@ public:
     Eigen::VectorXd tau_seq_raw, corr_mean_seq_raw, corr_err_seq_raw;
     Eigen::VectorXd tau_seq, corr_mean_seq, corr_err_seq;
 
+    // helping matrices
     Eigen::MatrixXd corr_tau_bin;
     Eigen::MatrixXd sample_bootstrap;
+    std::vector<int> select_tau;
 
 
 public:
 
     ReadInModule() = default;
-
-    void allocate_memory();
 
     void deallocate_memory();
 
@@ -70,16 +70,29 @@ public:
     /* read sequence of correlation */
     void read_corr_from_file(const std::string &infile_corr_bin);
 
-    /* compute means and corr-errors of correlation */
+    /* calculate means and corr-errors of input bin correlations */
+    void analyse_corr();
+
+    /* discard correlations with poor data quality,
+     * rotate correlations to eigen space of covariance matrix */
+    void discard_and_rotate();
+
+
+private:
+
+    void allocate_memory();
+
+    /* compute means of correlation */
     void compute_corr_means();
 
-    /* compute covariance matrix C_ij */
+    /* compute corr-errors of correlations */
+    void compute_corr_errs();
+
+    /* compute covariance matrix C_ij and diagonalize */
     void compute_cov_matrix();
 
     /* discard correlations with poor data quality */
-    std::vector<int> discard_poor_quality_data();
-
-
+    void discard_poor_quality_data();
 };
 
 

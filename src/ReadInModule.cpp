@@ -37,6 +37,8 @@ void ReadInModule::deallocate_memory() {
     // free useless objects which cost large memory
     this->corr_tau_bin.resize(0, 0);
     this->sample_bootstrap.resize(0, 0);
+    this->select_tau.clear();
+    this->select_tau.shrink_to_fit();
 
     this->tau_seq_raw.resize(0);
     this->corr_mean_seq_raw.resize(0);
@@ -122,14 +124,19 @@ void ReadInModule::read_corr_from_file(const std::string &infile_g_bin) {
 void ReadInModule::compute_corr_means() {
     // clear previous data
     corr_mean_seq_raw = Eigen::VectorXd::Zero(lt);
-    corr_err_seq_raw = Eigen::VectorXd::Zero(lt);
 
     // calculate means of correlations
     for (int l = 0; l < lt; ++l) {
         corr_mean_seq_raw[l] = corr_tau_bin.col(l).sum() / nbin;
     }
+}
 
-    // generate bootstrap samples
+void ReadInModule::compute_corr_errs() {
+    // clear previous data
+    corr_err_seq_raw = Eigen::VectorXd::Zero(lt);
+
+    // first generate bootstrap samples
+    // `nbin` random selections out of the `nbin` bins
     for (int i = 0; i < num_bootstrap; ++i) {
         for (int l = 0; l < lt; ++l) {
             for(int bin = 0; bin < nbin; bin++) {
@@ -143,33 +150,79 @@ void ReadInModule::compute_corr_means() {
     // compute corr-errors of correlations
     for (int l = 0; l < lt; ++l) {
         corr_err_seq_raw[l] = ( (sample_bootstrap.col(l).array() - corr_mean_seq_raw[l])
-                              * (sample_bootstrap.col(l).array() - corr_mean_seq_raw[l]) ).sum();
+                * (sample_bootstrap.col(l).array() - corr_mean_seq_raw[l]) ).sum();
         corr_err_seq_raw[l] = sqrt(corr_err_seq_raw[l] / num_bootstrap);
     }
 }
 
+void ReadInModule::analyse_corr() {
+    this->compute_corr_means();
+    this->compute_corr_errs();
+}
+
+void ReadInModule::discard_poor_quality_data() {
+    // first determine dimension of covariance matrix
+    this->cov_mat_dim = 0;
+
+    // discard correlations with poor data quality
+    // criteria: relative error less than 0.1
+    this->select_tau.reserve(lt);               // contain tau index where the correlation has `good` data quality
+
+    // static correlation G(0) excluded
+    for (int l = 1; l < lt; ++l) {
+        if ( abs(corr_err_seq_raw[l] / corr_mean_seq_raw[l]) < 0.1) {
+            cov_mat_dim++;
+            select_tau.emplace_back(l);
+        }
+    }
+    select_tau.shrink_to_fit();
+    assert( select_tau.size() == cov_mat_dim );
+
+    // allocate memory
+    this->tau_seq.resize(cov_mat_dim);
+    this->corr_mean_seq.resize(cov_mat_dim);
+    this->corr_err_seq.resize(cov_mat_dim);
+    this->cov_mat.resize(cov_mat_dim, cov_mat_dim);
+    this->cov_eig.resize(cov_mat_dim);
+    this->rotate_mat.resize(cov_mat_dim, cov_mat_dim);
+
+    for (int i = 0; i < cov_mat_dim; ++i) {
+        const int l = select_tau[i];
+        tau_seq[i] = tau_seq_raw[l];
+        corr_mean_seq[i] = corr_mean_seq_raw[l];
+        corr_err_seq[i] = corr_err_seq_raw[l];
+    }
+}
+
 void ReadInModule::compute_cov_matrix() {
+    // clear previous data
+    cov_mat = Eigen::MatrixXd::Zero(cov_mat_dim, cov_mat_dim);
+
+    // compute covariance matrix
+    // means and errors of correlations with `poor` quality are discarded ahead of time
+    for (int i = 0; i < cov_mat_dim; ++i) {
+        for (int j = 0; j < cov_mat_dim; ++j) {
+            // fixed G(0), not included in the data set defining chi square
+            cov_mat(i, j) = ( (sample_bootstrap.col(select_tau[i]).array() - corr_mean_seq[i])
+                            * (sample_bootstrap.col(select_tau[j]).array() - corr_mean_seq[j]) ).sum();
+        }
+    }
+}
+
+void ReadInModule::discard_and_rotate() {
     // record static correlation G(0), rescale such that G(0) = 1.0
     this->g0 = corr_mean_seq_raw[0];
 
     // discard correlations with poor data quality
-    std::vector<int> selected_tau = discard_poor_quality_data();
+    discard_poor_quality_data();
 
-    // rescaled by G(0)
+    // rescaled correlations by G(0)
     corr_mean_seq /= g0;
     corr_err_seq /= g0;
     sample_bootstrap /= g0;
 
-    // clear previous data
-    cov_mat = Eigen::MatrixXd::Zero(cov_mat_dim, cov_mat_dim);
-
-    for (int i = 0; i < cov_mat_dim; ++i) {
-        for (int j = 0; j < cov_mat_dim; ++j) {
-            // fixed G(0), not included in the data set defining chi square
-            cov_mat(i, j) = ( (sample_bootstrap.col(selected_tau[i]).array() - corr_mean_seq[i])
-                            * (sample_bootstrap.col(selected_tau[j]).array() - corr_mean_seq[j]) ).sum();
-        }
-    }
+    // compute covariance matrix
+    compute_cov_matrix();
 
     // diagonalize covariance matrix
     // for a real symmetric matrix, orthogonal transformation T satisfies
@@ -183,38 +236,3 @@ void ReadInModule::compute_cov_matrix() {
     // rotate_mat = u.transpose();
 }
 
-std::vector<int> ReadInModule::discard_poor_quality_data() {
-
-    // first determine dimension of covariance matrix
-    // discard correlations with poor data quality
-    this->cov_mat_dim = 0;
-    std::vector<int> selected_tau;
-    selected_tau.reserve(lt);
-
-    // static correlation G(0) excluded
-    for (int l = 1; l < lt; ++l) {
-        if ( abs(corr_err_seq_raw[l] / corr_mean_seq_raw[l]) < 0.1) {
-            cov_mat_dim++;
-            selected_tau.emplace_back(l);
-        }
-    }
-    selected_tau.shrink_to_fit();
-    assert( selected_tau.size() == cov_mat_dim );
-
-    // allocate memory
-    this->tau_seq.resize(cov_mat_dim);
-    this->corr_mean_seq.resize(cov_mat_dim);
-    this->corr_err_seq.resize(cov_mat_dim);
-    this->cov_mat.resize(cov_mat_dim, cov_mat_dim);
-    this->cov_eig.resize(cov_mat_dim);
-    this->rotate_mat.resize(cov_mat_dim, cov_mat_dim);
-
-    for (int i = 0; i < cov_mat_dim; ++i) {
-        const int l = selected_tau[i];
-        tau_seq[i] = tau_seq_raw[l];
-        corr_mean_seq[i] = corr_mean_seq_raw[l];
-        corr_err_seq[i] = corr_err_seq_raw[l];
-    }
-
-    return selected_tau;
-}

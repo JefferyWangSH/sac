@@ -36,6 +36,5 @@
 .idea/
 build/
 cmake-build-debug/
-results/
 input/
 references/
