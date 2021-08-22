@@ -137,20 +137,17 @@ void ReadInModule::compute_corr_errs() {
 
     // first generate bootstrap samples
     // `nbin` random selections out of the `nbin` bins
+    std::uniform_int_distribution<> rand_bin(0, nbin - 1);
     for (int i = 0; i < num_bootstrap; ++i) {
-        for (int l = 0; l < lt; ++l) {
-            for(int bin = 0; bin < nbin; bin++) {
-                std::uniform_int_distribution<> rand_bin(0, nbin - 1);
-                sample_bootstrap(i, l) += corr_tau_bin(rand_bin(rand_engine_readin), l);
-            }
+        for (int bin = 0; bin < nbin; bin++) {
+            sample_bootstrap.row(i) += corr_tau_bin.row(rand_bin(rand_engine_readin));
         }
     }
     sample_bootstrap /= nbin;
 
     // compute corr-errors of correlations
     for (int l = 0; l < lt; ++l) {
-        corr_err_seq_raw[l] = ( (sample_bootstrap.col(l).array() - corr_mean_seq_raw[l])
-                * (sample_bootstrap.col(l).array() - corr_mean_seq_raw[l]) ).sum();
+        corr_err_seq_raw[l] = (sample_bootstrap.col(l).array() - corr_mean_seq_raw[l]).square().sum();
         corr_err_seq_raw[l] = sqrt(corr_err_seq_raw[l] / num_bootstrap);
     }
 }
