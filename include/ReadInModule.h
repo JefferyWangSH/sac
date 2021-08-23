@@ -29,71 +29,69 @@
 // random engine
 static std::default_random_engine rand_engine_readin(time(nullptr));
 
+namespace QMCData {
+    class ReadInModule {
+    public:
+        int lt{};                       // number of imaginary time slices
+        int nbin{};                     // number of bins (after rebin)
+        int nbin_total{};               // number of bins (before rebin)
+        int rebin_pace{};               // rebin factor (pace of rebin), 1 for all bins
+        int num_bootstrap{};            // number of bootstrap samples
+        double beta{};                  // inverse temperature beta
+        double g0{};                    // static correlation at tau = 0, worked as normalization parameter
 
-class ReadInModule {
-public:
+        int cov_mat_dim{};              // dimension of covariance matrix
+        Eigen::MatrixXd cov_mat;        // covariance matrix
+        Eigen::MatrixXd rotate_mat;     // orthogonal matrix, rotating covariance matrix to its eigen space
+        Eigen::VectorXd cov_eig;        // eigenvalues of covariance matrix
 
-    int lt{};                       // number of imaginary time slices
-    int nbin{};                     // number of bins (after rebin)
-    int nbin_total{};               // number of bins (before rebin)
-    int rebin_pace{};               // rebin factor (pace of rebin), 1 for all bins
-    int num_bootstrap{};            // number of bootstrap samples
-    double beta{};                  // inverse temperature beta
-    double g0{};                    // static correlation at tau = 0, worked as normalization parameter
+        Eigen::VectorXd tau, corr_mean, corr_err;
 
-    int cov_mat_dim{};              // dimension of covariance matrix
-    Eigen::MatrixXd cov_mat;        // covariance matrix
-    Eigen::MatrixXd rotate_mat;     // orthogonal matrix, rotating covariance matrix to its eigen space
-    Eigen::VectorXd cov_eig;        // eigenvalues of covariance matrix
-
-    Eigen::VectorXd tau_seq_raw, corr_mean_seq_raw, corr_err_seq_raw;
-    Eigen::VectorXd tau_seq, corr_mean_seq, corr_err_seq;
-
-    // helping matrices
-    Eigen::MatrixXd corr_tau_bin;
-    Eigen::MatrixXd sample_bootstrap;
-    std::vector<int> select_tau;
+        // helping matrices
+        Eigen::MatrixXd corr_tau_bin;
+        Eigen::MatrixXd sample_bootstrap;
 
 
-public:
+    public:
 
-    ReadInModule() = default;
+        ReadInModule() = default;
 
-    void deallocate_memory();
+        void deallocate_memory();
 
-    /* set up module params */
-    void set_params(int lt, double beta, int nbin, int rebin_pace, int num_bootstrap);
+        /* set up module params */
+        void set_params(int lt, double beta, int nbin, int rebin_pace, int num_bootstrap);
 
-    /* read sequence of imaginary time tau from input file */
-    void read_tau_from_file(const std::string &infile_tau_seq);
+        /* read sequence of imaginary time tau from input file */
+        void read_tau_from_file(const std::string &infile_tau_seq);
 
-    /* read sequence of correlation */
-    void read_corr_from_file(const std::string &infile_corr_bin);
+        /* read sequence of correlation */
+        void read_corr_from_file(const std::string &infile_corr_bin);
 
-    /* calculate means and corr-errors of input bin correlations */
-    void analyse_corr();
+        /* calculate means and corr-errors of input bin correlations */
+        void analyse_corr();
 
-    /* discard correlations with poor data quality,
-     * rotate correlations to eigen space of covariance matrix */
-    void discard_and_rotate();
+        /* discard correlations with poor data quality,
+         * rotate correlations to eigen space of covariance matrix */
+        void discard_and_rotate();
 
 
-private:
+    private:
 
-    void allocate_memory();
+        void allocate_memory();
 
-    /* compute means of correlation */
-    void compute_corr_means();
+        /* compute means of correlation */
+        void compute_corr_means();
 
-    /* compute corr-errors of correlations */
-    void compute_corr_errs();
+        /* compute corr-errors of correlations */
+        void compute_corr_errs();
 
-    /* compute covariance matrix C_ij and diagonalize */
-    void compute_cov_matrix();
+        /* compute covariance matrix C_ij and diagonalize */
+        void compute_cov_matrix();
 
-    /* discard correlations with poor data quality */
-    void discard_poor_quality_data();
-};
+        /* discard correlations with poor data quality */
+        void discard_poor_quality_data();
+    };
+}
 
 
 #endif //SAC_READINMODULE_H

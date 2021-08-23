@@ -15,24 +15,26 @@
 #define EIGEN_VECTORIZE_SSE4_2
 #include <Eigen/Core>
 
-class SAC;
-class FrequencyGrid;
+namespace Simulation { class SAC; }
+namespace  Grid { class FrequencyGrid; }
 
-class Kernel {
-public:
-    int nt;
-    int nfreq;
+namespace Kernel {
+    class Kernel {
+    public:
+        int nt;
+        int nfreq;
 
-    Eigen::MatrixXd kernel;
+        Eigen::MatrixXd kernel;
 
-public:
-    Kernel() = default;
+    public:
+        Kernel() = default;
 
-    void set_params(int nt, int nfreq);
+        Kernel(int nt, int nfreq);
 
-    void init(const SAC &sac, FrequencyGrid grid, const std::string &mode);
+        void init(const Simulation::SAC &sac, Grid::FrequencyGrid grid, const std::string &mode="fermion");
 
-    void rotate(const Eigen::MatrixXd &rotate_mat);
-};
+        void rotate(const Eigen::MatrixXd &rotate_mat);
+    };
+}
 
 #endif //SAC_KERNEL_H

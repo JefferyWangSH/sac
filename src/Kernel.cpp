@@ -3,13 +3,13 @@
 #include "SAC.h"
 #include "FrequencyGrid.h"
 
-void Kernel::set_params(int _nt, int _nfreq) {
-    this->nt = _nt;
-    this->nfreq = _nfreq;
+Kernel::Kernel::Kernel(int nt, int nfreq) {
+    this->nt = nt;
+    this->nfreq = nfreq;
     this->kernel.resize(nt, nfreq);
 }
 
-void Kernel::init(const SAC &sac, FrequencyGrid grid, const std::string &mode) {
+void Kernel::Kernel::init(const Simulation::SAC &sac, Grid::FrequencyGrid grid, const std::string &mode) {
     assert( sac.tau.size() == nt );
     assert( grid.upper() == nfreq );
     assert( mode == "fermion" );
@@ -26,7 +26,7 @@ void Kernel::init(const SAC &sac, FrequencyGrid grid, const std::string &mode) {
     }
 }
 
-void Kernel::rotate(const Eigen::MatrixXd &rotate_mat) {
+void Kernel::Kernel::rotate(const Eigen::MatrixXd &rotate_mat) {
     assert( rotate_mat.rows() == nt );
     assert( rotate_mat.cols() == nt );
 

@@ -10,6 +10,7 @@ set(SOURCES
         src/ReadInModule.cpp
         src/FrequencyGrid.cpp
         src/Kernel.cpp
+        src/AnnealChain.cpp
         src/DiagonalTools.hpp
         )
 

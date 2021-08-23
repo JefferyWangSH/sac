@@ -20,74 +20,108 @@
 #include "ReadInModule.h"
 #include "FrequencyGrid.h"
 #include "Kernel.h"
+#include "AnnealChain.h"
 
 // random engine
 static std::default_random_engine rand_engine_sac(time(nullptr));
 
 
-class SAC {
-public:
+namespace Simulation {
+    class SAC {
+    public:
 
-    /* model params */
-    int nt{};                           // number of time slices
-    double beta{};                      // inverse temperature
-    double scale_factor{};              // scaling factor G(0)
-    int nbootstrap{};                   // number of bootstrap samples
+        /* model params */
+        int nt{};                           // number of time slices
+        double beta{};                      // inverse temperature
+        double scale_factor{};              // scaling factor G(0)
+        int nbootstrap{};                   // number of bootstrap samples
 
-    /* griding params */
-    FrequencyGrid grid;
+        std::string update_mode{};
+        std::string kernel_mode{};
 
-    /* sampling params */
-    int ndelta{};                       // number of delta functions
-    int window_width{};                 // width of random move window
-    double delta_amplitude{};           // amplitude of delta functions
-    std::vector<int> delta_locations;   // locations of delta functions
+        /* griding params */
+        Grid::FrequencyGrid *grid;
 
-    double theta{};                     // sampling temperature
-    double accept_radio{};              // accepting radio of updates
+        /* sampling params */
+        Annealing::DeltaData *delta;
+        Annealing::AnnealChain *anneal;
 
-    Kernel kernel;                      // kernel
-    Eigen::VectorXd tau;                // tau points
-    Eigen::VectorXd corr;               // time correlations from QMC
-    Eigen::VectorXd sigma;              // standard deviation of transformed correlations
+        /* kernel */
+        Kernel::Kernel *kernel;
 
-    Eigen::VectorXd corr_current;       // current time correlations from spectrum
-    Eigen::VectorXd corr_update;        // updated time correlations from spectrum
+        /* data from QMC input */
+        QMCData::ReadInModule *readin;
 
-    ReadInModule *readin;                // data from QMC input
+        double accept_radio{};              // accepting radio of updates
+        int accept_count{};                 // accepting counter
 
-public:
+        Eigen::VectorXd tau;                // tau points
+        Eigen::VectorXd corr;               // time correlations from QMC
+        Eigen::VectorXd sigma;              // standard deviation of transformed correlations
 
-    SAC();
+        Eigen::VectorXd corr_current;       // current time correlations from spectrum
+        Eigen::VectorXd corr_update;        // updated time correlations from spectrum
 
-    /** subroutine for parameter settings */
-    /* set up parameters for read in module */
-    void set_read_in_params(int lt, double beta, int nbin, int rebin_pace, int num_bootstrap);
-
-    /* set up file which contains data of tau points */
-    void set_filename_tau(const std::string &infile_tau);
-
-    /* set up file which contains data of time correlations */
-    void set_filename_corr(const std::string &infile_corr);
-
-    /* set up parameters for grids of frequency domain */
-    void set_griding_params(double grid_interval, double spec_interval, double omega_min, double omega_max);
-
-    /* set up parameters for sampling procedure */
-    void set_sampling_params(double ndelta, double theta);
-
-    /** initialization */
-    void init();
+        double chi2{};                      // chi2 (goodness of fitting) of current spectrum
+        double chi2_minimum{};              // minimum of chi2
 
 
-private:
+    public:
 
-    /* read QMC data (transformed) from read in module */
-    void init_from_module();
+        /* construction / destruction */
+        SAC();
+        ~SAC();
 
-    /* initialize spectrum */
-    void init_spectrum();
+        /** subroutine for parameter settings */
+        /* set up parameters for read in module */
+        void set_read_in_params(int lt, double beta, int nbin, int rebin_pace, int num_bootstrap);
 
-};
+        /* set up file which contains data of tau points */
+        void set_filename_tau(const std::string &infile_tau);
+
+        /* set up file which contains data of time correlations */
+        void set_filename_corr(const std::string &infile_corr);
+
+        /* set up parameters for grids of frequency domain */
+        void set_griding_params(double grid_interval, double spec_interval, double omega_min, double omega_max);
+
+        /* set up parameters for sampling procedure */
+        void set_sampling_params(double ndelta, double theta, int max_annealing_steps);
+
+        /* set up parameters controlling simulation modes */
+        void set_mode_params(const std::string &kernel_mode, const std::string &update_mode);
+
+        /** initialization */
+        void init();
+
+        /** annealing process */
+
+
+    private:
+
+        /* read QMC data (transformed) from read in module */
+        void init_from_module();
+
+        /* initialize spectrum */
+        void init_spectrum();
+
+        /* computing current correlations from spectrum */
+        void compute_corr_from_spec();
+
+        /* compute chi2, the goodness of fitting, for any input correlations */
+        double compute_goodness(const Eigen::VectorXd &corr_from_spectrum);
+
+        /** one step of Monte Carlo update of delta functions */
+        void update_deltas_1step();
+
+        /* move a single delta function in one moving attempt */
+        void update_deltas_1step_single();
+
+        /* move a pair of delta functions in one moving attempt */
+        void update_deltas_1step_pair();
+
+    };
+}
+
 
 #endif //SAC_H
