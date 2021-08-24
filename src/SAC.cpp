@@ -1,6 +1,8 @@
 #include "SAC.h"
 
 #include <iostream>
+#include <fstream>
+#include <iomanip>
 
 
 Simulation::SAC::SAC() {
@@ -31,12 +33,13 @@ void Simulation::SAC::set_griding_params(double grid_interval, double spec_inter
     this->grid = new Grid::FrequencyGrid(grid_interval, spec_interval, omega_min, omega_max);
 }
 
-void Simulation::SAC::set_sampling_params(double ndelta, double theta, int max_annealing_steps) {
+void Simulation::SAC::set_sampling_params(double ndelta, double theta, int max_annealing_steps, int _bin_num, int _bin_size) {
     this->delta = new Annealing::DeltaData();
     this->delta->ndelta = ndelta;
     this->delta->theta = theta;
 
     this->anneal = new Annealing::AnnealChain(max_annealing_steps);
+    this->measure = new Measure::Measure(_bin_num, _bin_size);
 }
 
 void Simulation::SAC::set_mode_params(const std::string &_kernel_mode, const std::string &_update_mode) {
@@ -69,8 +72,7 @@ void Simulation::SAC::init() {
     this->chi2 = compute_goodness(this->corr_current);
     this->chi2_minimum = this->chi2;
 
-    this->accept_count = 0;
-    this->accept_radio = 0.0;
+    this->accept_radio = 0;
 
     // free memory
     this->readin->deallocate_memory();
@@ -84,7 +86,6 @@ void Simulation::SAC::init_from_module() {
     this->nt = readin->cov_mat_dim;
     this->beta = readin->beta;
     this->scale_factor = readin->g0;
-    this->nbootstrap = readin->num_bootstrap;
 
     this->tau = readin->tau;
     this->corr = readin->rotate_mat * readin->corr_mean;
@@ -111,7 +112,7 @@ void Simulation::SAC::compute_corr_from_spec() {
     corr_current = tmp_kernel * Eigen::VectorXd::Constant(delta->ndelta, delta->amplitude);
 }
 
-double Simulation::SAC::compute_goodness(const Eigen::VectorXd &corr_from_spectrum) {
+const double Simulation::SAC::compute_goodness(const Eigen::VectorXd &corr_from_spectrum) const{
     assert( corr_from_spectrum.size() == nt );
     return ((corr_from_spectrum - corr).array() * sigma.array()).square().sum();
 }
@@ -135,25 +136,25 @@ void Simulation::SAC::update_deltas_1step_single() {
     std::uniform_int_distribution<> rand_delta(0, delta->ndelta-1);
     std::uniform_int_distribution<> rand_width(1, delta->window_width);
     int select_delta;
-    int select_width;
+    int move_width;
     int location_current;
     int location_updated;
     double chi2_updated;
     double p;
+    int accept_count = 0;
 
     // attempt to move for ndelta times
-    this->accept_count = 0;
     for (int i = 0; i < delta->ndelta; ++i) {
         // randomly select one delta function
         select_delta = rand_delta(rand_engine_sac);
-        select_width = rand_width(rand_engine_sac);
+        move_width = rand_width(rand_engine_sac);
         location_current = delta->locations[select_delta];
 
         if (std::bernoulli_distribution(0.5)(rand_engine_sac)) {
-            location_updated = location_current + select_width;
+            location_updated = location_current + move_width;
         }
         else {
-            location_updated = location_current - select_width;
+            location_updated = location_current - move_width;
         }
 
         // abort updates if out of frequency domain
@@ -179,13 +180,11 @@ void Simulation::SAC::update_deltas_1step_single() {
             if ( this->chi2 < this->chi2_minimum ) {
                 this->chi2_minimum = this->chi2;
             }
-            this->accept_count++;
+            accept_count++;
         }
     }
-
     // compute accepting radio
-    this->accept_radio = accept_count / delta->ndelta;
-    this->accept_count = 0;
+    this->accept_radio = (double)accept_count / delta->ndelta;
 }
 
 /**
@@ -198,73 +197,137 @@ void Simulation::SAC::update_deltas_1step_pair() {
     // helping params
     std::uniform_int_distribution<> rand_delta(0, delta->ndelta-1);
     std::uniform_int_distribution<> rand_width(1, delta->window_width);
-
-
+    int select_delta1, select_delta2;
+    int move_width1, move_width2;
+    int location_current1, location_current2;
+    int location_updated1, location_updated2;
+    bool out_of_domain1, out_of_domain2;
+    double chi2_updated;
+    double p;
+    int accept_count = 0;
 
     // attempt to move for ndelta/2 times
     // moving pair of deltas in an attempt
-    this->accept_count = 0;
-    for (int i = 0; i < delta->ndelta/2; i++) {
-        // randomly select two delta functions
+    for (int i = 0; i < ceil(delta->ndelta/2); i++) {
+        // randomly select two different delta functions
+        select_delta1 = rand_delta(rand_engine_sac);
+        select_delta2 = select_delta1;
+        while ( select_delta1 == select_delta2 ) {
+            select_delta2 = rand_delta(rand_engine_sac);
+        }
 
+        // randomly select width of moving within window
+        move_width1 = rand_width(rand_engine_sac);
+        move_width2 = rand_width(rand_engine_sac);
+        location_current1 = delta->locations[select_delta1];
+        location_current2 = delta->locations[select_delta2];
+
+        if (std::bernoulli_distribution(0.5)(rand_engine_sac)) {
+            location_updated1 = location_current1 + move_width1;
+            location_updated2 = location_current2 - move_width2;
+        }
+        else {
+            location_updated1 = location_current1 - move_width1;
+            location_updated2 = location_current2 + move_width2;
+        }
+
+        // abort updates if out of frequency domain
+        out_of_domain1 = (location_updated1 < grid->lower() || location_updated1 >= grid->upper());
+        out_of_domain2 = (location_updated2 < grid->lower() || location_updated2 >= grid->upper());
+        if ( out_of_domain1 || out_of_domain2 ) {
+            i -= 1;
+            continue;
+        }
+
+        // compute updated correlation
+        this->corr_update = this->corr_current + delta->amplitude *
+                ( kernel->kernel.col(location_updated1) - kernel->kernel.col(location_current1)
+                + kernel->kernel.col(location_updated2) - kernel->kernel.col(location_current2) );
+
+        // compute updated chi2 and accepting radio
+        chi2_updated = compute_goodness(this->corr_update);
+        p = exp( (this->chi2 - chi2_updated) / (2.0 * delta->theta) );
+
+        if ( std::bernoulli_distribution(std::min(p, 1.0))(rand_engine_sac) ) {
+            // accepted
+            this->delta->locations[select_delta1] = location_updated1;
+            this->delta->locations[select_delta2] = location_updated2;
+            this->corr_current = this->corr_update;
+            this->chi2 = chi2_updated;
+            if ( this->chi2 < this->chi2_minimum ) {
+                this->chi2_minimum = this->chi2;
+            }
+            accept_count++;
+        }
     }
-
-
-//    // helping params
-//    std::uniform_int_distribution<> rand_delta(0, delta->ndelta-1);
-//    std::uniform_int_distribution<> rand_width(1, delta->window_width);
-//    int select_delta;
-//    int select_width;
-//    int location_current;
-//    int location_updated;
-//    double chi2_updated;
-//    double p;
-//
-//    // attempt to move for ndelta times
-//    this->accept_count = 0;
-//    for (int i = 0; i < delta->ndelta; ++i) {
-//        select_delta = rand_delta(rand_engine_sac);
-//        select_width = rand_width(rand_engine_sac);
-//        location_current = delta->locations[select_delta];
-//
-//        if (std::bernoulli_distribution(0.5)(rand_engine_sac)) {
-//            location_updated = location_current + select_width;
-//        }
-//        else {
-//            location_updated = location_current - select_width;
-//        }
-//
-//        // abort updates if out of frequency domain
-//        if (location_updated < grid->lower() || location_updated >= grid->upper()) {
-//            //             FIXME : check potential differences here
-//            i -= 1;
-//            continue;
-//        }
-//
-//        // compute updated correlation
-//        this->corr_update = this->corr_current + delta->amplitude *
-//                ( kernel->kernel.col(location_updated) - kernel->kernel.col(location_current) );
-//
-//        // compute updated chi2 and accepting radio
-//        chi2_updated = compute_goodness(this->corr_update);
-//        p = exp( (this->chi2 - chi2_updated) / (2.0 * delta->theta) );
-//
-//        if ( std::bernoulli_distribution(std::min(p, 1.0))(rand_engine_sac) ) {
-//            // accepted
-//            this->delta->locations[select_delta] = location_updated;
-//            this->corr_current = this->corr_update;
-//            this->chi2 = chi2_updated;
-//            if ( this->chi2 < this->chi2_minimum ) {
-//                this->chi2_minimum = this->chi2;
-//            }
-//            this->accept_count++;
-//        }
-//    }
-//
-//    // compute accepting radio
-//    this->accept_radio = accept_count / delta->ndelta;
-//    this->accept_count = 0;
+    // compute accepting radio
+    this->accept_radio = (double)accept_count / ceil(delta->ndelta/2);
 }
 
+void Simulation::SAC::update_fixed_theta() {
+    // total steps in a fixe theta: nbin * sbin
+    for ( int n = 0; n < measure->nbin; ++n) {
+        // n corresponds to index of bins
+        for (int s = 0; s < measure->sbin; ++s) {
+            // s corresponds to index of samples in one bin
+            // recalculate goodness chi2 every 10 steps
+            if ( s % 10 == 1 ) {
+                this->chi2 = this->compute_goodness(this->corr_current);
+            }
 
+            this->update_deltas_1step();
+            this->measure->fill(s, this->chi2, this->accept_radio);
+        }
 
+        // compute means for bin of index `n`
+        this->measure->bin_analyse(n);
+
+        // writing log
+        this->write_log(n);
+
+        // adjust width of window
+        // make sure the accepting radio of random move is around 0.5
+        if (this->measure->bin_accept_radio(n) > 0.5) {
+            this->delta->window_width = ceil(this->delta->window_width * 1.5);
+        }
+        if (this->measure->bin_accept_radio(n) < 0.4) {
+            this->delta->window_width = ceil(this->delta->window_width / 1.5);
+        }
+    }
+}
+
+void Simulation::SAC::write_log(int n) {
+    // n refers to index of bin number
+    std::ofstream log;
+    log.open("../results/log.log", std::ios::out|std::ios::app);
+    log << std::setiosflags(std::ios::right)
+        << std::setw(10) << this->anneal->len() + 1
+        << std::setw(10) << n + 1
+        << std::setw(15) << this->delta->theta
+        << std::setw(15) << this->chi2_minimum / this->nt
+        << std::setw(15) << this->measure->bin_chi2(n) / this->nt
+        << std::setw(15) << this->measure->bin_accept_radio(n)
+        << std::setw(15) << this->delta->window_width * this->grid->interval()
+        << std::endl;
+    log.close();
+}
+
+void Simulation::SAC::annealing() {
+    // annealing process, no more than `max_length` steps
+    for (int i = 0; i < this->anneal->max_length; ++i) {
+        // updating
+        this->update_fixed_theta();
+
+        // record simulating information for current theta
+        this->anneal->push(*this->delta);
+
+        // exit condition
+        this->measure->analyse();
+        if (this->measure->chi2() - this->chi2_minimum < 1e-3) {
+            break;
+        }
+
+        // lower down sampling temperature
+        this->delta->theta /= 1.1;
+    }
+}

@@ -20,10 +20,12 @@ namespace  Grid { class FrequencyGrid; }
 
 namespace Kernel {
     class Kernel {
-    public:
-        int nt;
-        int nfreq;
 
+    public:
+        int nt;         // dimension of time
+        int nfreq;      // dimension of frequency
+
+        // kernel matrix
         Eigen::MatrixXd kernel;
 
     public:
@@ -31,8 +33,10 @@ namespace Kernel {
 
         Kernel(int nt, int nfreq);
 
+        /* init kernel from grids in frequency and time */
         void init(const Simulation::SAC &sac, Grid::FrequencyGrid grid, const std::string &mode="fermion");
 
+        /* transformation of picture (bases) */
         void rotate(const Eigen::MatrixXd &rotate_mat);
     };
 }

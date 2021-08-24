@@ -3,13 +3,13 @@
 #pragma once
 
 /**
- *   Interface class for the read-in of QMC data
- *   Features:
- *     1. read-in of imaginary time sequence tau, dynamical correlations G(tau)
- *        and their QMC errors in terms of bin.
- *     2. generate and diagonalize covariance matrix, further compute its eigenvalue and eigenvector for SAC use.
- *        ( The SAC calculation is performed in eigen space of the covariance matrix. )
- */
+  *   Interface class for the read-in of QMC data
+  *   Features:
+  *     1. read-in of imaginary time sequence tau, dynamical correlations G(tau)
+  *        and their QMC errors in terms of bin.
+  *     2. generate and diagonalize covariance matrix, further compute its eigenvalue and eigenvector for SAC use.
+  *        ( The SAC calculation is performed in eigen space of the covariance matrix. )
+  */
 
 /*
  * TODO：

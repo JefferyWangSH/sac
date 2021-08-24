@@ -3,13 +3,12 @@
 #pragma once
 
 /**
- *  This head file includes SAC class for the implementation of stochastic analytic continuation method,
- *  proposed by Anders.W. Sandvik.
- *  A Monte Carlo process and simulated annealing are performed
- *  to extract real-frequency information from imaginary-time correlations,
- *  which are obtained previously by QMC calculations.
- *
- */
+  *  This head file includes SAC class for the implementation of stochastic analytic continuation method,
+  *  proposed by Anders.W. Sandvik.
+  *  A Monte Carlo process and simulated annealing are performed
+  *  to extract real-frequency information from imaginary-time correlations,
+  *  which are obtained previously by QMC calculations.
+  */
 
 #include <random>
 
@@ -21,10 +20,14 @@
 #include "FrequencyGrid.h"
 #include "Kernel.h"
 #include "AnnealChain.h"
+#include "Measure.h"
 
 // random engine
 static std::default_random_engine rand_engine_sac(time(nullptr));
 
+namespace Kernel {
+    class Kernel;
+}
 
 namespace Simulation {
     class SAC {
@@ -34,7 +37,6 @@ namespace Simulation {
         int nt{};                           // number of time slices
         double beta{};                      // inverse temperature
         double scale_factor{};              // scaling factor G(0)
-        int nbootstrap{};                   // number of bootstrap samples
 
         std::string update_mode{};
         std::string kernel_mode{};
@@ -52,9 +54,6 @@ namespace Simulation {
         /* data from QMC input */
         QMCData::ReadInModule *readin;
 
-        double accept_radio{};              // accepting radio of updates
-        int accept_count{};                 // accepting counter
-
         Eigen::VectorXd tau;                // tau points
         Eigen::VectorXd corr;               // time correlations from QMC
         Eigen::VectorXd sigma;              // standard deviation of transformed correlations
@@ -62,9 +61,11 @@ namespace Simulation {
         Eigen::VectorXd corr_current;       // current time correlations from spectrum
         Eigen::VectorXd corr_update;        // updated time correlations from spectrum
 
+        double accept_radio{};              // average accepting radio of MC move
         double chi2{};                      // chi2 (goodness of fitting) of current spectrum
         double chi2_minimum{};              // minimum of chi2
 
+        Measure::Measure *measure;          // measuring module
 
     public:
 
@@ -86,7 +87,7 @@ namespace Simulation {
         void set_griding_params(double grid_interval, double spec_interval, double omega_min, double omega_max);
 
         /* set up parameters for sampling procedure */
-        void set_sampling_params(double ndelta, double theta, int max_annealing_steps);
+        void set_sampling_params(double ndelta, double theta, int max_annealing_steps, int bin_num, int bin_size);
 
         /* set up parameters controlling simulation modes */
         void set_mode_params(const std::string &kernel_mode, const std::string &update_mode);
@@ -95,9 +96,10 @@ namespace Simulation {
         void init();
 
         /** annealing process */
+        void annealing();
 
 
-    private:
+    public:
 
         /* read QMC data (transformed) from read in module */
         void init_from_module();
@@ -109,7 +111,7 @@ namespace Simulation {
         void compute_corr_from_spec();
 
         /* compute chi2, the goodness of fitting, for any input correlations */
-        double compute_goodness(const Eigen::VectorXd &corr_from_spectrum);
+        const double compute_goodness(const Eigen::VectorXd &corr_from_spectrum) const;
 
         /** one step of Monte Carlo update of delta functions */
         void update_deltas_1step();
@@ -119,6 +121,12 @@ namespace Simulation {
 
         /* move a pair of delta functions in one moving attempt */
         void update_deltas_1step_pair();
+
+        /* equilibrium of system at a fixed theta */
+        void update_fixed_theta();
+
+        /* log output: n refers to index of bin number */
+        void write_log(int n);
 
     };
 }

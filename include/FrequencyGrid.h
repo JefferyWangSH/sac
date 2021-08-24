@@ -11,10 +11,10 @@ namespace Grid {
     class FrequencyGrid{
     private:
         /* griding params */
-        double omega_min{};                 // minimum of frequency
-        double omega_max{};                 // maximum of frequency
+        double omega_min{};                 // minimum of frequency ( in space of continuum )
+        double omega_max{};                 // maximum of frequency ( in space of continuum )
 
-        int int_omega_min{};                // min and max of frequency number, in unit of griding interval
+        int int_omega_min{};                // min and max of frequency index, in unit of griding interval
         int int_omega_max{};
 
         double grid_interval{};             // delta frequency of sampling space
@@ -29,12 +29,16 @@ namespace Grid {
 
         void init();
 
+        /* lower index of discrete frequency */
         const int lower() const;
 
+        /* upper index of discrete frequency */
         const int upper() const;
 
+        /* frequency interval in fine grids */
         const double interval() const;
 
+        /* convert discrete index to continuum frequency */
         const double index_to_freq(const int &grid_index);
 
     };

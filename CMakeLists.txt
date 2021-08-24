@@ -11,6 +11,7 @@ set(SOURCES
         src/FrequencyGrid.cpp
         src/Kernel.cpp
         src/AnnealChain.cpp
+        src/Measure.cpp
         src/DiagonalTools.hpp
         )
 
