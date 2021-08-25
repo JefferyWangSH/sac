@@ -1,125 +1,66 @@
-#include <cassert>
 #include "Measure.h"
-#include "MonteCarloSAC.h"
 
-Measure::Measure(int nbin, int nconfig) {
+Measure::Measure::Measure(int nbin, int sbin) {
     this->nbin = nbin;
-    this->nconfig = nconfig;
-    prepare();
+    this->sbin = sbin;
+
+    this->sample_accept_radio.resize(sbin);
+    this->sample_chi2.resize(sbin);
+    this->bin_chi2.resize(nbin);
+    this->bin_accept_radio.resize(nbin);
 }
 
-void Measure::resize(int _nbin, int _nconfig) {
+void Measure::Measure::resize(int _nbin, int _sbin) {
     this->nbin = _nbin;
-    this->nconfig = _nconfig;
-    prepare();
+    this->sbin = _sbin;
+    this->sample_accept_radio.resize(_sbin);
+    this->sample_chi2.resize(_sbin);
+    this->bin_chi2.resize(_nbin);
+    this->bin_accept_radio.resize(_nbin);
+
+    this->clear();
 }
 
-void Measure::prepare() {
-    bin_Hamilton.clear();
-    bin_n_x.clear();
-    bin_Hamilton.reserve(nbin);
-    bin_n_x.reserve(nbin);
-    for (int bin = 0; bin < nbin; ++bin) {
-        bin_Hamilton.emplace_back(0.0);
-        bin_n_x.emplace_back(nconfig, 0.0);
-    }
-    bin_Hamilton.shrink_to_fit();
-    bin_n_x.shrink_to_fit();
-
-    mean_Hamilton = 0.0;
-    err_Hamilton = 0.0;
-    tmp_Hamilton = 0.0;
-
-    mean_n_x.clear();
-    err_n_x.clear();
-    tmp_n_x.clear();
-    mean_n_x.reserve(nconfig);
-    err_n_x.reserve(nconfig);
-    tmp_n_x.reserve(nconfig);
-
-    for (int i = 0; i < nconfig; ++i) {
-        mean_n_x.emplace_back(0.0);
-        err_n_x.emplace_back(0.0);
-        tmp_n_x.emplace_back(0.0);
-    }
-    mean_n_x.shrink_to_fit();
-    err_n_x.shrink_to_fit();
-    tmp_n_x.shrink_to_fit();
-}
-
-void Measure::clear_tmp_stats() {
-    assert( tmp_n_x.size() == nconfig );
-
-    nn = 0;
-    tmp_Hamilton = 0.0;
-    for (int i = 0; i < nconfig; ++i) {
-        tmp_n_x[i] = 0.0;
-    }
-}
-
-void Measure::measure(MonteCarloSAC& sac) {
-    assert( sac.nconfig == nconfig );
-    assert( sac.nbin == nbin );
-
-    double tmp_h = 0.0;
-    sac.cal_Config_Hamiltonian(tmp_h);
-    tmp_Hamilton += tmp_h;
-
-    for (int i = 0; i < nconfig; ++i) {
-        tmp_n_x[i] += sac.n_list[i];
-    }
-    nn++;
-}
-
-void Measure::normalize_stats() {
-    tmp_Hamilton /= nn;
-    for (int i = 0; i < nconfig; ++i) {
-        tmp_n_x[i] /= nn;
-    }
-}
-
-void Measure::write_data_to_bin(const int& bin) {
-    assert( bin >= 0 && bin < nbin );
-
-    bin_Hamilton[bin] = tmp_Hamilton;
-    for (int i = 0; i < nconfig; ++i) {
-        bin_n_x[bin][i] = tmp_n_x[i];
-    }
-}
-
-void Measure::analyse_stats() {
-
+void Measure::Measure::clear() {
     // clear previous data
-    mean_Hamilton = 0.0;
-    err_Hamilton = 0.0;
-    for (int i = 0; i < nconfig; ++i) {
-        mean_n_x[i] = 0.0;
-        err_n_x[i] = 0.0;
-    }
+    this->chi2_mean = 0;
+    this->chi2_err = 0;
+    this->accept_radio_mean = 0;
+    this->accept_radio_err = 0;
 
-    // average over bins
-    for (int bin = 0; bin < nbin; ++bin) {
-        mean_Hamilton += bin_Hamilton[bin];
-        err_Hamilton += bin_Hamilton[bin] * bin_Hamilton[bin];
+    this->sample_accept_radio.setZero();
+    this->sample_chi2.setZero();
+    this->bin_chi2.setZero();
+    this->bin_accept_radio.setZero();
+}
 
-        for (int i = 0; i < nconfig; ++i) {
-            mean_n_x[i] += bin_n_x[bin][i];
-            err_n_x[i] += bin_n_x[bin][i] * bin_n_x[bin][i];
-        }
-    }
+void Measure::Measure::fill(int s, double chi2, double accept_radio) {
+    assert( s >= 0 && s < sbin );
+    // s labels index of samples in one bin
+    this->sample_accept_radio(s) = accept_radio;
+    this->sample_chi2(s) = chi2;
+}
 
-    // normalize data
-    mean_Hamilton /= nbin;
-    err_Hamilton /= nbin;
-    for (int i = 0; i < nconfig; ++i) {
-        mean_n_x[i] /= nbin;
-        err_n_x[i] /= nbin;
-    }
+void Measure::Measure::bin_analyse(int n) {
+    // compute means for one bin
+    // n labels index of certain one bin
+    this->bin_chi2(n) = this->sample_chi2.sum() / this->sbin;
+    this->bin_accept_radio(n) = this->sample_accept_radio.sum() / this->sbin;
+}
 
-    // calculate statistical error
-    err_Hamilton = pow(err_Hamilton - pow(mean_Hamilton, 2), 0.5) / pow(nbin - 1, 0.5);
-    for (int i = 0; i < nalpha; ++i) {
-        err_n_x[i] = pow(err_n_x[i] - pow(mean_n_x[i], 2), 0.5) / pow(nbin - 1, 0.5);
-    }
+void Measure::Measure::analyse() {
+    // computing means and errors of all bins
+    this->chi2_mean = this->bin_chi2.sum() / this->nbin;
+    this->accept_radio_mean = this->bin_accept_radio.sum() / this->nbin;
+    this->chi2_err = sqrt( (this->bin_chi2.array() - this->chi2_mean).square().sum() / (this->nbin - 1) );
+    this->accept_radio_err = sqrt( (this->bin_accept_radio.array() - this->accept_radio_mean).square().sum() / (this->nbin - 1) );
+}
+
+const double Measure::Measure::chi2() const{
+    return this->chi2_mean;
+}
+
+const double Measure::Measure::accept_radio() const {
+    return this->accept_radio_mean;
 }
 

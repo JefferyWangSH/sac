@@ -1,15 +1,18 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(Stochastic_Analytic_Continuation)
+project(sac)
 
-set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -march=native -O3")
+set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -march=native -O3 -fopenmp " )
 
 set(SOURCES
         src/main.cpp
         src/SAC.cpp
+        src/ReadInModule.cpp
+        src/FrequencyGrid.cpp
+        src/Kernel.cpp
+        src/AnnealChain.cpp
         src/Measure.cpp
-        src/MonteCarloSAC.cpp
-        src/ProgressBar.hpp
+        src/DiagonalTools.hpp
         )
 
 # link eigen to MKL
@@ -25,14 +28,11 @@ link_directories(/opt/intel/mkl/lib/intel64)
 
 link_directories(/opt/intel/lib/intel64)
 
-add_executable(${PROJECT_NAME} ${SOURCES})
+add_executable( ${PROJECT_NAME} ${SOURCES} )
 
-target_include_directories(${PROJECT_NAME}
-        PRIVATE
-        ${PROJECT_SOURCE_DIR}/include
-        )
+target_include_directories( ${PROJECT_NAME} PRIVATE ${PROJECT_SOURCE_DIR}/include )
 
-target_link_libraries(Stochastic_Analytic_Continuation mkl_gf_lp64 mkl_intel_thread mkl_gnu_thread mkl_blas95_lp64 mkl_intel_lp64 mkl_sequential iomp5 mkl_core pthread m)
+target_link_libraries(sac mkl_gf_lp64 mkl_intel_thread mkl_gnu_thread mkl_blas95_lp64 mkl_intel_lp64 mkl_sequential iomp5 mkl_core pthread m)
 
 # boost
 set(Boost_USE_RELEASE_lIBS ON)
@@ -43,4 +43,4 @@ include_directories(/usr/local/include/boost)
 
 link_directories(/usr/local/lib)
 
-target_link_libraries(Stochastic_Analytic_Continuation boost_program_options)
+target_link_libraries(sac boost_program_options)
