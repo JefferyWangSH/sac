@@ -5,65 +5,104 @@
 #include <boost/program_options.hpp>
 
 #include "SAC.h"
-
-#include <chrono>
+#include "MonteCarloSAC.h"
 
 
 /**
-  *  TODO:
-  *   1. Optimize random module (missing)
-  *   2. ...
-  */
+ *  TODO:
+ *   1. Support reading configurations from file
+ *   2. update in parallel
+ *   3. ...
+ */
 
 
 /** The main program */
 int main(int argc, char *argv[]) {
 
-    int lt = 100;
-    double beta = 4.0;
-    int nbin = 1000;
-    int rebin_pace = 1;
-    int num_boostrap = 5000;
+    int lt = 80;
+    double beta = 4;
 
-    double grid_interval = 1e-5;
-    double spec_interval = 1e-2;
-    double omega_min = -10.0;
-    double omega_max = 10.0;
+    double omega_min = -8.0;
+    double omega_max =  8.0;
 
-    int ndelta = 1000;
-    double theta = 20;
-    int max_annealing_steps = 5e3;
-    int bin_size = 4e3;
-    int bin_num = 5;
-    int collecting_steps = 1e5;
+    int nMoment = 1;
+    int nconfig = 100;
 
-    std::chrono::steady_clock::time_point begin_t{}, end_t{};
+    int nbin = 2000;
+    int nstep_1bin = 100;
+    int step_between_bins = 10;
+    int nwarm = 3e5;
 
-    begin_t = std::chrono::steady_clock::now();
+    /** Recover averaged spectrum */
+    /*
+    MonteCarloSAC sac;
 
-    Simulation::SAC *sac = new Simulation::SAC();
+    sac.set_SAC_params(lt, beta, nconfig, omega_min, omega_max, nMoment);
+    sac.set_QMC_filename("../results/data/gt_l4_lt80_u-4.0_b4.0_k_pi2pi2.txt");
 
-    sac->set_read_in_params(lt, beta, nbin, rebin_pace, num_boostrap);
-    sac->set_filename_tau("../input/tau.dat");
-    sac->set_filename_corr("../input/corr.dat");
-    sac->set_griding_params(grid_interval, spec_interval, omega_min, omega_max);
-    sac->set_sampling_params(ndelta, theta, max_annealing_steps, bin_num, bin_size, collecting_steps);
-    sac->set_mode_params("fermion", "single");
+    sac.set_Configs_filename("../results/configs/alpha_2.50.txt");
 
-    sac->init();
+    double alpha = exp(-5);
+    sac.set_alpha(alpha);
 
-    sac->perform_annealing();
+    sac.prepare();
 
-    sac->decide_sampling_theta();
+    std::vector<double> gt(lt);
+    for (int t = 0; t < lt; ++t) {
+        gt[t] = 0.0;
+        for (int i = 0; i < nconfig; ++i) {
+            gt[t] += sac.kernel[t][i] * sac.n_list[i];
+        }
+    }
+    for (auto g : gt) {
+        std::cout << g << std::endl;
+    }
+    double H = 0.0;
+    sac.cal_Config_Hamiltonian(H);
+    std::cout << H << std::endl;
+    */
 
-    sac->sample_and_collect();
+    /** Monte Carlo procedure */
 
-    sac->output("../results/spec.dat");
+    MonteCarloSAC sac;
 
-    end_t = std::chrono::steady_clock::now();
-    std::cout << "total cost "
-              << (double)std::chrono::duration_cast<std::chrono::milliseconds>(end_t-begin_t).count()/1000
-              << "s." << std::endl;
+    sac.set_SAC_params(lt, beta, nconfig, omega_min, omega_max, nMoment);
+
+    sac.set_measure_params(nbin, nstep_1bin, step_between_bins, nwarm);
+
+    sac.set_QMC_filename("../results/data/gt_l4_lt80_u-4.0_b4.0_k_pi2pi2.txt");
+
+    double alpha = exp(-29.9);
+    double dalpha = exp(0.1);
+
+    for (int n = 0; n < 400; ++n) {
+
+        sac.set_alpha(alpha);
+
+        std::stringstream ss;
+        ss << std::setiosflags(std::ios::fixed) << std::setprecision(2) << log(alpha) - log(dalpha);
+        std::string lnAlpha_old = ss.str();
+        ss.str("");
+        std::string infile_configs = "../results/configs/alpha_" + lnAlpha_old + ".txt";
+        sac.set_Configs_filename(infile_configs);
+
+        sac.prepare();
+
+        sac.run_Monte_Carlo();
+
+        sac.print_stats();
+
+        ss << std::setiosflags(std::ios::fixed) << std::setprecision(2) << log(alpha);
+        std::string lnAlpha = ss.str();
+        ss.str("");
+        std::string outfile_configs = "../results/configs/alpha_" + lnAlpha + ".txt";
+        sac.output_Configs(outfile_configs);
+
+        std::string outfile_hamilton = "../results/h-alpha.txt";
+        sac.output_stats(outfile_hamilton);
+
+        alpha *= dalpha;
+    }
 
     return 0;
 }

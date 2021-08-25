@@ -1,148 +1,102 @@
-#ifndef SAC_H
-#define SAC_H
+#ifndef STOCHASTIC_ANALYTIC_CONTINUATION_SAC_H
+#define STOCHASTIC_ANALYTIC_CONTINUATION_SAC_H
 #pragma once
 
-/**
-  *  This head file includes SAC class for the implementation of stochastic analytic continuation method,
-  *  proposed by Anders.W. Sandvik.
-  *  A Monte Carlo process and simulated annealing are performed
-  *  to extract real-frequency information from imaginary-time correlations,
-  *  which are obtained previously by QMC calculations.
-  */
+/*
+ *  This head file includes SAC class to extract fermion spectrum information from imaginary-time DQMC data.
+ *  With method of Stochastic Analytic Continuation (SAC), we managed to
+ *  obtain the real frequency fermion spectrum or LDOS from imaginary-time Matsubara Green's functions.
+ *  Reference:
+ *      K. S. D. Beach, arXiv:cond-mat/0403055
+ */
 
 #include <random>
 
-#define EIGEN_USE_MKL_ALL
-#define EIGEN_VECTORIZE_SSE4_2
-#include <Eigen/Core>
-
-#include "ReadInModule.h"
-#include "FrequencyGrid.h"
-#include "Kernel.h"
-#include "AnnealChain.h"
-#include "Measure.h"
-
 // random engine
-static std::default_random_engine rand_engine_sac(time(nullptr));
-
-namespace Kernel {
-    class Kernel;
-}
-
-namespace Simulation {
-    class SAC {
-    public:
-
-        /* model params */
-        int nt{};                           // number of time slices
-        double beta{};                      // inverse temperature
-        double scale_factor{};              // scaling factor G(0)
-
-        std::string update_mode{};          // modes of MC update (single or pair)
-        std::string kernel_mode{};          // kernel types
-
-        Eigen::VectorXd tau;                // tau points
-        Eigen::VectorXd corr;               // time correlations from QMC
-        Eigen::VectorXd sigma;              // standard deviation of transformed correlations
-
-        Eigen::VectorXd corr_current;       // current time correlations from spectrum
-        Eigen::VectorXd corr_update;        // updated time correlations from spectrum
-
-        int collecting_steps{};             // number of MC steps for collecting spectrum
-        Eigen::VectorXd freq;               // recovered frequency
-        Eigen::VectorXd spectrum;           // recovered spectrum
-
-        double accept_radio{};              // average accepting radio of MC move
-        double chi2{};                      // chi2 (goodness of fitting) of current spectrum
-        double chi2_minimum{};              // minimum of chi2
-
-        /* griding params */
-        Grid::FrequencyGrid *grid;
-
-        /* sampling params */
-        Annealing::AnnealData *data;
-        Annealing::AnnealChain *anneal;
-
-        /* kernel */
-        Kernel::Kernel *kernel;
-
-        /* data from QMC input */
-        QMCData::ReadInModule *readin;
-
-        /* measuring module */
-        Measure::Measure *measure;
-
-    public:
-
-        /* construction and destruction */
-        SAC();
-        ~SAC();
-
-        /** subroutine for parameter settings */
-        /* set up parameters for read in module */
-        void set_read_in_params(int lt, double beta, int nbin, int rebin_pace, int num_bootstrap);
-
-        /* set up file which contains data of tau points */
-        void set_filename_tau(const std::string &infile_tau);
-
-        /* set up file which contains data of time correlations */
-        void set_filename_corr(const std::string &infile_corr);
-
-        /* set up parameters for grids of frequency domain */
-        void set_griding_params(double grid_interval, double spec_interval, double omega_min, double omega_max);
-
-        /* set up parameters for sampling procedure */
-        void set_sampling_params(double ndelta, double theta, int max_annealing_steps, int bin_num, int bin_size, int collecting_steps);
-
-        /* set up parameters controlling simulation modes */
-        void set_mode_params(const std::string &kernel_mode, const std::string &update_mode);
-
-        /** initialization */
-        void init();
-
-        /** annealing process */
-        void perform_annealing();
-
-        /* determine sampling temperature after annealing */
-        void decide_sampling_theta();
-
-        /** sampling and collect spectrum */
-        void sample_and_collect();
-
-        /** file output of recovered spectrum */
-        void output(const std::string &filename);
-
-    private:
-
-        /* read QMC data (transformed) from read in module */
-        void init_from_module();
-
-        /* initialize spectrum */
-        void init_spectrum();
-
-        /* computing current correlations from spectrum */
-        void compute_corr_from_spec();
-
-        /* compute chi2, the goodness of fitting, for any input correlations */
-        const double compute_goodness(const Eigen::VectorXd &corr_from_spectrum) const;
-
-        /** one step of Monte Carlo update of delta functions */
-        void update_deltas_1step();
-
-        /* move a single delta function in one moving attempt */
-        void update_deltas_1step_single();
-
-        /* move a pair of delta functions in one moving attempt */
-        void update_deltas_1step_pair();
-
-        /** equilibrium of system at a fixed theta */
-        void update_fixed_theta();
-
-        /* log output: n labels index of bin number */
-        void write_log(int n);
-
-    };
-}
+static std::default_random_engine generate_SAC(time(nullptr));
 
 
-#endif //SAC_H
+class SAC {
+
+public:
+    int lt = 80;
+    double beta = 4.0;
+    double dtau = 0.05;
+
+    // slices in configuration space, eventually map to energy space
+    // FIXME: mind here not include 0 and 1
+    int nconfig = 50;
+    double omega_min = -5.0;
+    double omega_max = 5.0;
+    double delta_n_config = 1.0 / (50 + 1);
+
+    // vectors and matrices for SAC
+    std::vector<double> x_list, n_list, tau_list;
+    std::vector<double> omega_list, A_config;
+    std::vector<double> g_tau, sigma_tau;
+    std::vector<std::vector<double>> kernel;
+
+    // Hamiltonian density h(\tau)
+    std::vector<double> h_tau;
+
+    // fictitious inverse temperature
+    double alpha = exp(-10);
+
+    // sampling parameter to accelerate convergence
+    // conserve the first ( n_moment ) moments when update configurations
+    int nMoment = 1;
+
+    // name of file which contains QMC data
+    std::string filename_greens = "default.txt";
+    std::string filename_configs;
+
+    /*
+    // params for calculate accepting or swap rate of configurations
+    int total_step = 0;
+    int accept_step = 0;
+    double accept_rate = 0.0;
+    */
+
+    SAC() = default;
+
+    /* set up params for SAC */
+    void set_SAC_params(int lt, double beta, int nconfig, double omega_min, double omega_max, int nMoment);
+
+    /* set up inverse temperature alpha */
+    void set_alpha(const double& alpha);
+
+    /* set up filename for reading QMC data*/
+    void set_QMC_filename(const std::string& filename);
+
+    void set_Configs_filename(const std::string& filename);
+
+    /* read DQMC data of dynamic measurements from file  */
+    void read_QMC_data(const std::string& filename);
+
+    void read_Configs_data(const std::string& filename = "");
+
+    /* prepare for simulation, including reading data from input file */
+    virtual void prepare();
+
+    /* perform one step of updates */
+    void Metropolis_update_1step();
+
+    /* calculate Hamiltonian for a specific configuration */
+    void cal_Config_Hamiltonian(double& H);
+
+    friend class measure;
+
+public:
+
+    /* calculate Hamiltonian density h(\tau) for a specific configuration */
+    void cal_Config_Hamiltonian_Density(std::vector<double> &h);
+
+    /* randomly update weight configs */
+    void update_Configs(std::vector<int> &index_selected, std::vector<double> &n_selected);
+
+    /* MC update according to Metropolis algorithm */
+    void Metropolis_update();
+
+};
+
+#endif //STOCHASTIC_ANALYTIC_CONTINUATION_SAC_H
