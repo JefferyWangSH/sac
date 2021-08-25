@@ -14,23 +14,40 @@ void Grid::FrequencyGrid::init() {
     // convert frequency into unit of griding interval
     this->int_omega_min = 0;
     this->int_omega_max = ceil((omega_max - omega_min) / grid_interval);
+    this->num_grid_index = this->int_omega_max;
+    this->num_spec_index = ceil((omega_max - omega_min) / spec_interval);
 }
 
-const int Grid::FrequencyGrid::lower() const{
-    return this->int_omega_min;
-}
-
-const int Grid::FrequencyGrid::upper() const{
-    return this->int_omega_max;
-}
-
-const double Grid::FrequencyGrid::interval() const{
+const double Grid::FrequencyGrid::GridInterval() const{
     return this->grid_interval;
 }
 
-const double Grid::FrequencyGrid::index_to_freq(const int &grid_index) {
-    assert( grid_index >= 0 );
-    assert( grid_index < int_omega_max );
-    return omega_min + grid_index * grid_interval;
+const double Grid::FrequencyGrid::SpecInterval() const {
+    return this->spec_interval;
 }
 
+const int Grid::FrequencyGrid::GridsNum() const {
+    return this->num_grid_index;
+}
+
+const int Grid::FrequencyGrid::SpecNum() const {
+    return this->num_spec_index;
+}
+
+const double Grid::FrequencyGrid::GridIndex2Freq(const int &grid_index) const{
+    assert( grid_index >= 0 );
+    assert( grid_index < this->GridsNum() );
+    return this->omega_min + grid_index * this->grid_interval;
+}
+
+const double Grid::FrequencyGrid::SpecIndex2Freq(const int &spec_index) const{
+    assert( spec_index >= 0 );
+    assert( spec_index < this->SpecNum() );
+    return this->omega_min + spec_index * this->spec_interval;
+}
+
+const int Grid::FrequencyGrid::Grid2Spec(const int &grid_index) const{
+    assert( grid_index >= 0 );
+    assert( grid_index < this->GridsNum() );
+    return ceil(grid_index * this->grid_interval / this->spec_interval);
+}

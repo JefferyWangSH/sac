@@ -20,6 +20,9 @@ namespace Grid {
         double grid_interval{};             // delta frequency of sampling space
         double spec_interval{};             // delta frequency of spectrum (frequency spacing in accumulated histogram)
 
+        int num_grid_index{};               // number of (fine) discrete frequencies in grids
+        int num_spec_index{};               // number of discrete frequencies in accumulated spectrum
+
 
     public:
 
@@ -29,17 +32,26 @@ namespace Grid {
 
         void init();
 
-        /* lower index of discrete frequency */
-        const int lower() const;
-
-        /* upper index of discrete frequency */
-        const int upper() const;
-
         /* frequency interval in fine grids */
-        const double interval() const;
+        const double GridInterval() const;
 
-        /* convert discrete index to continuum frequency */
-        const double index_to_freq(const int &grid_index);
+        /* frequency interval in accumulated spectrum */
+        const double SpecInterval() const;
+
+        /* number of intervals in fine grids */
+        const int GridsNum() const;
+
+        /* number of intervals in accumulated spectrum */
+        const int SpecNum() const;
+
+        /* convert discrete index of grids to continuum frequency */
+        const double GridIndex2Freq(const int &grid_index) const;
+
+        /* convert discrete index of spectrum to continuum frequency */
+        const double SpecIndex2Freq(const int &spec_index) const;
+
+        /* convert index of grids to index of spectrum bins */
+        const int Grid2Spec(const int &grid_index) const;
 
     };
 }

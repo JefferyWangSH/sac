@@ -11,22 +11,22 @@ Kernel::Kernel::Kernel(int nt, int nfreq) {
 
 void Kernel::Kernel::init(const Simulation::SAC &sac, Grid::FrequencyGrid grid, const std::string &mode) {
     assert( sac.tau.size() == nt );
-    assert( grid.upper() == nfreq );
+    assert( grid.GridsNum() == nfreq );
 
     // kernel for fermion greens function
     if ( mode == "fermion" ) {
-        for (int i = grid.lower(); i < grid.upper(); ++i) {
-            const double freq = grid.index_to_freq(i);
-            kernel.col(i) = (-freq * sac.tau.array()).exp() / ( 1.0 + exp(-sac.beta * freq) );
+        for (int i = 0; i < grid.GridsNum(); ++i) {
+            const double freq = grid.GridIndex2Freq(i);
+            kernel.col(i) = (-freq * sac.tau.array()).exp() / ( 2 * M_PI * (1.0 + exp(-sac.beta * freq)) );
         }
     }
 
     // kernel for boson greens function
     if ( mode == "boson" ) {
-        for (int i = grid.lower(); i < grid.upper(); ++i) {
-            const double freq = grid.index_to_freq(i);
+        for (int i = 0; i < grid.GridsNum(); ++i) {
+            const double freq = grid.GridIndex2Freq(i);
             kernel.col(i) = ( (-freq * sac.tau.array()).exp() + (-freq * (sac.beta - sac.tau.array())).exp() )
-                          / ( 1.0 + exp(-sac.beta * freq) );
+                          / ( M_PI * (1.0 + exp(-sac.beta * freq)) );
         }
     }
 }

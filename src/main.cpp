@@ -31,10 +31,11 @@ int main(int argc, char *argv[]) {
     double omega_max = 10.0;
 
     int ndelta = 1000;
-    double theta = 200.0;
+    double theta = 20;
     int max_annealing_steps = 5e3;
-    int bin_size = 8e3;
-    int bin_num = 30;
+    int bin_size = 4e3;
+    int bin_num = 5;
+    int collecting_steps = 1e5;
 
     std::chrono::steady_clock::time_point begin_t{}, end_t{};
 
@@ -46,18 +47,23 @@ int main(int argc, char *argv[]) {
     sac->set_filename_tau("../input/tau.dat");
     sac->set_filename_corr("../input/corr.dat");
     sac->set_griding_params(grid_interval, spec_interval, omega_min, omega_max);
-    sac->set_sampling_params(ndelta, theta, max_annealing_steps, bin_num, bin_size);
+    sac->set_sampling_params(ndelta, theta, max_annealing_steps, bin_num, bin_size, collecting_steps);
     sac->set_mode_params("fermion", "single");
 
     sac->init();
 
-    sac->annealing();
+    sac->perform_annealing();
+
+    sac->decide_sampling_theta();
+
+    sac->sample_and_collect();
+
+    sac->output("../results/spec.dat");
 
     end_t = std::chrono::steady_clock::now();
     std::cout << "total cost "
               << (double)std::chrono::duration_cast<std::chrono::milliseconds>(end_t-begin_t).count()/1000
               << "s." << std::endl;
 
-    delete sac;
     return 0;
 }

@@ -10,8 +10,24 @@ Measure::Measure::Measure(int nbin, int sbin) {
     this->bin_accept_radio.resize(nbin);
 }
 
+void Measure::Measure::resize(int _nbin, int _sbin) {
+    this->nbin = _nbin;
+    this->sbin = _sbin;
+    this->sample_accept_radio.resize(_sbin);
+    this->sample_chi2.resize(_sbin);
+    this->bin_chi2.resize(_nbin);
+    this->bin_accept_radio.resize(_nbin);
+
+    this->clear();
+}
+
 void Measure::Measure::clear() {
     // clear previous data
+    this->chi2_mean = 0;
+    this->chi2_err = 0;
+    this->accept_radio_mean = 0;
+    this->accept_radio_err = 0;
+
     this->sample_accept_radio.setZero();
     this->sample_chi2.setZero();
     this->bin_chi2.setZero();
@@ -20,14 +36,14 @@ void Measure::Measure::clear() {
 
 void Measure::Measure::fill(int s, double chi2, double accept_radio) {
     assert( s >= 0 && s < sbin );
-    // s corresponds to index of samples in one bin
+    // s labels index of samples in one bin
     this->sample_accept_radio(s) = accept_radio;
     this->sample_chi2(s) = chi2;
 }
 
 void Measure::Measure::bin_analyse(int n) {
     // compute means for one bin
-    // n corresponds to index of certain one bin
+    // n labels index of certain one bin
     this->bin_chi2(n) = this->sample_chi2.sum() / this->sbin;
     this->bin_accept_radio(n) = this->sample_accept_radio.sum() / this->sbin;
 }
@@ -47,5 +63,4 @@ const double Measure::Measure::chi2() const{
 const double Measure::Measure::accept_radio() const {
     return this->accept_radio_mean;
 }
-
 

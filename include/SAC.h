@@ -38,21 +38,8 @@ namespace Simulation {
         double beta{};                      // inverse temperature
         double scale_factor{};              // scaling factor G(0)
 
-        std::string update_mode{};
-        std::string kernel_mode{};
-
-        /* griding params */
-        Grid::FrequencyGrid *grid;
-
-        /* sampling params */
-        Annealing::DeltaData *delta;
-        Annealing::AnnealChain *anneal;
-
-        /* kernel */
-        Kernel::Kernel *kernel;
-
-        /* data from QMC input */
-        QMCData::ReadInModule *readin;
+        std::string update_mode{};          // modes of MC update (single or pair)
+        std::string kernel_mode{};          // kernel types
 
         Eigen::VectorXd tau;                // tau points
         Eigen::VectorXd corr;               // time correlations from QMC
@@ -61,15 +48,33 @@ namespace Simulation {
         Eigen::VectorXd corr_current;       // current time correlations from spectrum
         Eigen::VectorXd corr_update;        // updated time correlations from spectrum
 
+        int collecting_steps{};             // number of MC steps for collecting spectrum
+        Eigen::VectorXd freq;               // recovered frequency
+        Eigen::VectorXd spectrum;           // recovered spectrum
+
         double accept_radio{};              // average accepting radio of MC move
         double chi2{};                      // chi2 (goodness of fitting) of current spectrum
         double chi2_minimum{};              // minimum of chi2
 
-        Measure::Measure *measure;          // measuring module
+        /* griding params */
+        Grid::FrequencyGrid *grid;
+
+        /* sampling params */
+        Annealing::AnnealData *data;
+        Annealing::AnnealChain *anneal;
+
+        /* kernel */
+        Kernel::Kernel *kernel;
+
+        /* data from QMC input */
+        QMCData::ReadInModule *readin;
+
+        /* measuring module */
+        Measure::Measure *measure;
 
     public:
 
-        /* construction / destruction */
+        /* construction and destruction */
         SAC();
         ~SAC();
 
@@ -87,7 +92,7 @@ namespace Simulation {
         void set_griding_params(double grid_interval, double spec_interval, double omega_min, double omega_max);
 
         /* set up parameters for sampling procedure */
-        void set_sampling_params(double ndelta, double theta, int max_annealing_steps, int bin_num, int bin_size);
+        void set_sampling_params(double ndelta, double theta, int max_annealing_steps, int bin_num, int bin_size, int collecting_steps);
 
         /* set up parameters controlling simulation modes */
         void set_mode_params(const std::string &kernel_mode, const std::string &update_mode);
@@ -96,10 +101,18 @@ namespace Simulation {
         void init();
 
         /** annealing process */
-        void annealing();
+        void perform_annealing();
 
+        /* determine sampling temperature after annealing */
+        void decide_sampling_theta();
 
-    public:
+        /** sampling and collect spectrum */
+        void sample_and_collect();
+
+        /** file output of recovered spectrum */
+        void output(const std::string &filename);
+
+    private:
 
         /* read QMC data (transformed) from read in module */
         void init_from_module();
@@ -122,10 +135,10 @@ namespace Simulation {
         /* move a pair of delta functions in one moving attempt */
         void update_deltas_1step_pair();
 
-        /* equilibrium of system at a fixed theta */
+        /** equilibrium of system at a fixed theta */
         void update_fixed_theta();
 
-        /* log output: n refers to index of bin number */
+        /* log output: n labels index of bin number */
         void write_log(int n);
 
     };

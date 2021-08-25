@@ -17,11 +17,12 @@
 
 namespace Annealing{
 
-    struct DeltaData{
+    struct AnnealData{
         double theta{};                 // sampling temperature
         int ndelta{};                   // number of delta functions
         int window_width{};             // width of random move window
         double amplitude{};             // amplitude of delta functions
+        double chi2{};                  // average fitting goodness chi2 at current sampling temperature
         Eigen::VectorXi locations;      // locations of delta functions
     };
 
@@ -30,7 +31,7 @@ namespace Annealing{
         int length{};
         int max_length{};
 
-        std::vector<DeltaData> chain;
+        std::vector<AnnealData> chain;
 
     public:
 
@@ -38,9 +39,11 @@ namespace Annealing{
 
         AnnealChain(int len);
 
-        void push(const DeltaData &data);
+        void push(const AnnealData &data);
 
         const int len() const;
+
+        void clear();
     };
 }
 

@@ -28,7 +28,7 @@ namespace Measure{
         double chi2_mean{}, chi2_err{};
         double accept_radio_mean{}, accept_radio_err{};
 
-        // data samples collected from Monte Carlo, index refers to collection sequence
+        // data samples collected from Monte Carlo, index labels collection sequence
         Eigen::VectorXd sample_chi2;
         Eigen::VectorXd sample_accept_radio;
 
@@ -36,12 +36,14 @@ namespace Measure{
         Eigen::VectorXd bin_chi2;
         Eigen::VectorXd bin_accept_radio;
 
-        // todo: collect spectrum
-
     public:
+
         Measure() = default;
 
         Measure(int nbin, int sbin);
+
+        /* resize dimensions */
+        void resize(int nbin, int sbin);
 
         /* fill data */
         void fill(int s, double chi2, double accept_radio);
