@@ -1,49 +1,68 @@
-#ifndef STOCHASTIC_ANALYTIC_CONTINUATION_MEASURE_H
-#define STOCHASTIC_ANALYTIC_CONTINUATION_MEASURE_H
+#ifndef SAC_MEASURE_H
+#define SAC_MEASURE_H
 #pragma once
 
-#include <vector>
+/**
+  *  This header file includes `Measure` class for monitoring and measuring `chi2` and average accepting rate
+  *  during the MC update of delta functions at a given fictitious temperature `theta`.
+  *  Bin calculation of means and errors are performed in this file.
+  */
 
-class MonteCarloSAC;
+#define EIGEN_USE_MKL_ALL
+#define EIGEN_VECTORIZE_SSE4_2
+#include <Eigen/Core>
 
-class Measure {
 
-public:
+namespace Measure{
+    class Measure {
 
-    int nbin{};
-    int nalpha{};
-    int nconfig{};
+    public:
 
-    int nn{0};
+        // number of bins
+        int nbin{};
 
-    std::vector<double> bin_Hamilton;
-    double mean_Hamilton{}, err_Hamilton{};
-    double tmp_Hamilton{};
+        // bin size, number of samples within one bin
+        int sbin{};
 
-    std::vector<std::vector<double>> bin_n_x;
-    std::vector<double> mean_n_x, err_n_x;
-    std::vector<double> tmp_n_x;
+        // measurements of chi2 and accepting radio
+        double chi2_mean{}, chi2_err{};
+        double accept_radio_mean{}, accept_radio_err{};
 
-public:
+        // data samples collected from Monte Carlo, index labels collection sequence
+        Eigen::VectorXd sample_chi2;
+        Eigen::VectorXd sample_accept_radio;
 
-    Measure() = default;
+        // means of data sorted by number of bin
+        Eigen::VectorXd bin_chi2;
+        Eigen::VectorXd bin_accept_radio;
 
-    explicit Measure(int nbin, int nconfig);
+    public:
 
-    void resize(int nbin, int nconfig);
+        Measure() = default;
 
-    void prepare();
+        Measure(int nbin, int sbin);
 
-    void clear_tmp_stats();
+        /* resize dimensions */
+        void resize(int nbin, int sbin);
 
-    void measure(MonteCarloSAC& sac);
+        /* fill data */
+        void fill(int s, double chi2, double accept_radio);
 
-    void normalize_stats();
+        /* analyse measurements for one certain bin */
+        void bin_analyse(int n);
 
-    void write_data_to_bin(const int& bin);
+        /* compute means and errors using bin analysis */
+        void analyse();
 
-    void analyse_stats();
+        /* clear previous statistics data */
+        void clear();
 
-};
+        /* return mean of chi2 */
+        const double chi2() const;
 
-#endif //STOCHASTIC_ANALYTIC_CONTINUATION_MEASURE_H
+        /* return mean of accepting radio */
+        const double accept_radio() const;
+    };
+}
+
+#endif //SAC_MEASURE_H
