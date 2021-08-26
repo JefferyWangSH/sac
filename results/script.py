@@ -30,5 +30,6 @@ def plot(x, y, label):
 
 if __name__ == "__main__":
     freq, spec = read_data(filename="spec.dat")
+    print(sum(spec))
     plot(freq, spec, label="${A(\omega)}$")
     

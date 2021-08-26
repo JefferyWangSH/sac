@@ -7,15 +7,21 @@
 
 Simulation::SAC::SAC() {
     this->readin = new QMCData::ReadInModule();
+    this->grid = nullptr;
+    this->kernel = nullptr;
+    this->data = nullptr;
+    this->anneal = nullptr;
+    this->measure = nullptr;
 }
 
 
 Simulation::SAC::~SAC() {
     delete this->grid;
     delete this->kernel;
-    delete this->data;
     delete this->anneal;
-    std::cout << "simulation was done！ :P" << std::endl;
+    delete this->measure;
+    // avoid double free here, no need to delete data
+    //    delete this->data;
 }
 
 
@@ -90,6 +96,7 @@ void Simulation::SAC::init() {
     // free memory
     this->readin->deallocate_memory();
     delete this->readin;
+    this->readin = nullptr;
 }
 
 
