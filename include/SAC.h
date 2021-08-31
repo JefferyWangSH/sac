@@ -56,6 +56,8 @@ namespace Simulation {
         double chi2{};                      // chi2 (goodness of fitting) of current spectrum
         double chi2_minimum{};              // minimum of chi2
 
+        std::string log_name{};             // log file name
+
         /* griding params */
         Grid::FrequencyGrid *grid;
 
@@ -87,6 +89,9 @@ namespace Simulation {
 
         /* set up file which contains data of time correlations */
         void set_filename_corr(const std::string &infile_corr);
+
+        /* set up file name of log output */
+        void set_filename_log(const std::string &outfile_log);
 
         /* set up parameters for grids of frequency domain */
         void set_griding_params(double grid_interval, double spec_interval, double omega_min, double omega_max);

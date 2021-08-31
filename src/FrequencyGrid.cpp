@@ -49,5 +49,5 @@ const double Grid::FrequencyGrid::SpecIndex2Freq(const int &spec_index) const{
 const int Grid::FrequencyGrid::Grid2Spec(const int &grid_index) const{
     assert( grid_index >= 0 );
     assert( grid_index < this->GridsNum() );
-    return ceil(grid_index * this->grid_interval / this->spec_interval);
+    return floor(grid_index * this->grid_interval / this->spec_interval);
 }

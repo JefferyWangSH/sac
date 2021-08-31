@@ -94,7 +94,7 @@ void QMCData::ReadInModule::read_corr_from_file(const std::string &infile_g_bin)
     getline(infile, line);
     boost::split(data, line, boost::is_any_of(" "), boost::token_compress_on);
     data.erase(std::remove(std::begin(data), std::end(data), ""), std::end(data));
-    this->nbin_total = boost::lexical_cast<int>(data[0]);
+    assert( this->nbin_total == boost::lexical_cast<int>(data[0]) );
 
     // clear previous data
     this->corr_tau_bin = Eigen::MatrixXd::Zero(this->nbin, this->lt);

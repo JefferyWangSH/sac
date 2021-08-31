@@ -23,6 +23,7 @@ const int Annealing::AnnealChain::len() const {
 }
 
 void Annealing::AnnealChain::clear() {
-    this->chain.clear();
+//    this->chain.clear();
+//    this->chain.shrink_to_fit();
     this->length = 0;
 }

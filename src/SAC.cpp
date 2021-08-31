@@ -14,14 +14,13 @@ Simulation::SAC::SAC() {
     this->measure = nullptr;
 }
 
-
 Simulation::SAC::~SAC() {
     delete this->grid;
     delete this->kernel;
     delete this->anneal;
     delete this->measure;
     // avoid double free here, no need to delete data
-    //    delete this->data;
+//    delete this->data;
 }
 
 
@@ -29,21 +28,21 @@ void Simulation::SAC::set_read_in_params(int _lt, double _beta, int _nbin, int _
     this->readin->set_params(_lt, _beta, _nbin, _rebin_pace, _num_bootstrap);
 }
 
-
 void Simulation::SAC::set_filename_tau(const std::string &infile_tau) {
     this->readin->read_tau_from_file(infile_tau);
 }
-
 
 void Simulation::SAC::set_filename_corr(const std::string &infile_corr) {
     this->readin->read_corr_from_file(infile_corr);
 }
 
+void Simulation::SAC::set_filename_log(const std::string &outfile_log) {
+    this->log_name = outfile_log;
+}
 
 void Simulation::SAC::set_griding_params(double grid_interval, double spec_interval, double omega_min, double omega_max) {
     this->grid = new Grid::FrequencyGrid(grid_interval, spec_interval, omega_min, omega_max);
 }
-
 
 void Simulation::SAC::set_sampling_params(double ndelta, double theta, int max_annealing_steps, int _bin_num, int _bin_size, int _collecting_steps) {
     this->data = new Annealing::AnnealData();
@@ -54,7 +53,6 @@ void Simulation::SAC::set_sampling_params(double ndelta, double theta, int max_a
     this->anneal = new Annealing::AnnealChain(max_annealing_steps);
     this->measure = new Measure::Measure(_bin_num, _bin_size);
 }
-
 
 void Simulation::SAC::set_mode_params(const std::string &_kernel_mode, const std::string &_update_mode) {
     assert( _update_mode == "single" || _update_mode == "pair" );
@@ -94,11 +92,11 @@ void Simulation::SAC::init() {
     this->spectrum.resize(this->grid->SpecNum());
 
     // free memory
-    this->readin->deallocate_memory();
-    delete this->readin;
-    this->readin = nullptr;
+//    // FIXME
+//    this->readin->deallocate_memory();
+//    delete this->readin;
+//    this->readin = nullptr;
 }
-
 
 void Simulation::SAC::init_from_module() {
     this->readin->analyse_corr();
@@ -113,18 +111,17 @@ void Simulation::SAC::init_from_module() {
     this->sigma = (sqrt(this->readin->num_bootstrap) / this->readin->cov_eig.array().sqrt()).matrix();
 }
 
-
 void Simulation::SAC::init_spectrum() {
     // initialize locations of delta functions
     // for symmetric spectrum, initialize locations near middle of frequency domain
     this->data->locations = Eigen::VectorXi::Constant(this->data->ndelta, ceil(0.5 * (0 + this->grid->GridsNum())));
 
-    // equal amplitudes
-    this->data->amplitude = 1.0 / this->data->ndelta;
+    // equal amplitudes (scaled)
+    this->data->amplitude = 1.0 / (this->scale_factor * this->data->ndelta);
 
     // width of random move window
     // FIXME: 1/10 of average frequency ?
-    const double average_freq = log(1.0/this->readin->corr_mean[nt-1]) / this->tau[nt-1];
+    const double average_freq = abs(log(1.0/this->readin->corr_mean[nt-1]) / this->tau[nt-1]);
     this->data->window_width = ceil( 0.1 * average_freq / this->grid->GridInterval() );
 }
 
@@ -135,12 +132,10 @@ void Simulation::SAC::compute_corr_from_spec() {
     this->corr_current = tmp_kernel * Eigen::VectorXd::Constant(this->data->ndelta, this->data->amplitude);
 }
 
-
 const double Simulation::SAC::compute_goodness(const Eigen::VectorXd &corr_from_spectrum) const{
     assert( corr_from_spectrum.size() == this->nt );
     return ((corr_from_spectrum - this->corr).array() * this->sigma.array()).square().sum();
 }
-
 
 void Simulation::SAC::update_deltas_1step() {
     if ( this->update_mode == "single" ) {
@@ -150,7 +145,6 @@ void Simulation::SAC::update_deltas_1step() {
         this->update_deltas_1step_pair();
     }
 }
-
 
 /**
   *  One Monte Carlo step of updates of delta functions (ndelta number of moving attempt)
@@ -210,7 +204,6 @@ void Simulation::SAC::update_deltas_1step_single() {
     // compute accepting radio
     this->accept_radio = (double)accept_count / this->data->ndelta;
 }
-
 
 /**
   *  One Monte Carlo step of updates of delta functions (ndelta/2 number of moving attempt)
@@ -322,11 +315,10 @@ void Simulation::SAC::update_fixed_theta() {
     }
 }
 
-
 void Simulation::SAC::write_log(int n) {
     // n labels index of bin number
     std::ofstream log;
-    log.open("../results/log.log", std::ios::out|std::ios::app);
+    log.open(this->log_name, std::ios::out|std::ios::app);
     log << std::setiosflags(std::ios::right)
         << std::setw(10) << this->anneal->len() + 1
         << std::setw(10) << n + 1
@@ -362,7 +354,6 @@ void Simulation::SAC::perform_annealing() {
     }
 }
 
-
 void Simulation::SAC::decide_sampling_theta() {
     // decide sampling temperature by slightly increasing theta
     for (int i = this->anneal->len()-1; i >= 0; --i) {
@@ -372,6 +363,8 @@ void Simulation::SAC::decide_sampling_theta() {
             break;
         }
     }
+    this->compute_corr_from_spec();
+    this->chi2 = this->compute_goodness(this->corr_current);
 
     // clear up useless information
     this->anneal->clear();
@@ -406,7 +399,6 @@ void Simulation::SAC::sample_and_collect() {
     // scaling and recovering spectrum
     this->spectrum *=  this->scale_factor / (this->collecting_steps * this->grid->SpecInterval());
 }
-
 
 void Simulation::SAC::output(const std::string &filename) {
     std::ofstream outfile;

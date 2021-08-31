@@ -3,6 +3,10 @@
 #include <iostream>
 #include <boost/program_options.hpp>
 
+#include <boost/algorithm/string/split.hpp>
+#include <boost/algorithm/string/classification.hpp>
+#include <boost/algorithm/string/constants.hpp>
+
 #include "SAC.h"
 
 
@@ -97,27 +101,113 @@ int main(int argc, char *argv[]) {
     /** SAC simulations */
     Simulation::SAC *sac = new Simulation::SAC();
 
+    // customized input folder
+//    std::string folder_name = "L8b4U-4k0.500.50";
+    std::string folder_name = "benchmark";
+    std::string in_path = "../input/" + folder_name;
+    std::string out_path = "../results/" + folder_name;
+    if ( access(out_path.c_str(), 0) != 0 ) {
+        std::string command = "mkdir " + out_path;
+        if ( system(command.c_str()) != 0 ) {
+            std::cerr << "fail to create " + out_path << std::endl;
+        }
+    }
+    // delete previous log
+    std::string out_log = out_path + "/log.log";
+    if ( access(out_log.c_str(), 0) == 0 ) {
+        std::string command = "rm " + out_log;
+        int status = system(command.c_str());
+    }
+
+    std::cout << "Initialization starts ..." << std::endl;
+
     sac->set_read_in_params(lt, beta, nbin, rebin_pace, nboostrap);
-    sac->set_filename_tau(infile_tau);
-    sac->set_filename_corr(infile_corr);
+    sac->set_filename_tau(in_path + "/tau.dat");
+    sac->set_filename_corr(in_path + "/cor.dat");
+    sac->set_filename_log(out_log);
     sac->set_griding_params(grid_interval, spec_interval, omega_min, omega_max);
     sac->set_sampling_params(ndelta, theta, max_annealing_steps, bin_num, bin_size, collecting_steps);
     sac->set_mode_params("fermion", "single");
 
     sac->init();
 
+    std::cout << "Initialization finished." << std::endl
+              << "Annealing starts with params :" << std::endl
+              << "  nt     = " << sac->nt << std::endl
+              << "  theta  = " << sac->data->theta << std::endl
+              << "  nsweep = " << sac->measure->sbin << std::endl
+              << "  nbin   = " << sac->measure->nbin << std::endl
+              << "  omega  = " << sac->grid->GridIndex2Freq(0) << ", "
+                               << sac->grid->GridIndex2Freq(sac->grid->GridsNum()-1) << std::endl
+              << "......" << std::endl;
+
     sac->perform_annealing();
 
     sac->decide_sampling_theta();
 
+    std::cout << "Annealing finished." << std::endl
+              << "Start collecting spectrum ... " << std::endl;
+
     sac->sample_and_collect();
 
-    sac->output(outfile_spec);
+    sac->output(out_path + "/spec.dat");
+
+    std::cout << "Accumulated spectrum has been writen into " + out_path + "/spec.dat ." << std::endl;
 
     end_t = std::chrono::steady_clock::now();
-    std::cout << "total cost "
+    std::cout << "Total cost: "
               << (double)std::chrono::duration_cast<std::chrono::milliseconds>(end_t-begin_t).count()/1000
               << " s." << std::endl;
+
+    /** test **/
+//    std::vector<double> freq_vec;
+//    std::vector<double> spec_vec;
+//
+//    std::ifstream infile;
+//    infile.open("../input/benchmark/spec_base.dat", std::ios::in);
+//    if (!infile.is_open()) {
+//        exit(1);
+//    }
+//    std::string line;
+//    std::vector<std::string> data;
+//    getline(infile, line);
+//    boost::split(data, line, boost::is_any_of(" "), boost::token_compress_on);
+//    data.erase(std::remove(std::begin(data), std::end(data), ""), std::end(data));
+//    while(getline(infile, line)) {
+//        boost::split(data, line, boost::is_any_of(" "), boost::token_compress_on);
+//        data.erase(std::remove(std::begin(data), std::end(data), ""), std::end(data));
+//        freq_vec.push_back(boost::lexical_cast<double>(data[0]));
+//        spec_vec.push_back(boost::lexical_cast<double>(data[1]));
+//    }
+//    infile.close();
+//
+//
+//    Eigen::VectorXd freq(freq_vec.size()), spec(freq_vec.size());
+//    for (int f = 0; f < freq_vec.size(); ++f) {
+//        freq(f) = freq_vec[f];
+//        spec(f) = spec_vec[f];
+//    }
+//
+//    Eigen::MatrixXd kernel(sac->nt, freq.size());
+//    for (int t = 0; t < sac->nt; ++t) {
+//        for (int f = 0; f < freq.size(); ++f) {
+//            kernel(t, f) = exp(-freq[f]*sac->tau[t]) / (2*M_PI*(1+exp(-sac->beta*freq[f])));
+//        }
+//    }
+//    kernel = sac->readin->rotate_mat * kernel;
+//    spec = spec/sac->scale_factor;
+//
+//    std::cout << ((spec_interval*kernel*spec-sac->corr).array() * sac->sigma.array()).square().sum() << std::endl;
+//
+//    Eigen::VectorXd err = spec_interval*kernel*spec - sac->corr;
+//    for (int i = 0; i < sac->readin->cov_mat_dim; ++i) {
+//        std::cout << sac->readin->corr_mean[i] << "     "
+//                  << sac->readin->corr_err[i] << "     "
+//                  << sac->readin->cov_eig[i] << "     "
+//                  << err[i] << "     "
+//                  << sac->sigma[i] << std::endl;
+//    }
+
 
     delete sac;
     return 0;
