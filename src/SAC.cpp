@@ -113,13 +113,43 @@ void Simulation::SAC::init_from_module() {
 
 void Simulation::SAC::init_spectrum() {
     // initialize locations of delta functions
-    // for symmetric spectrum, initialize locations near middle of frequency domain
-    this->data->locations = Eigen::VectorXi::Constant(this->data->ndelta, ceil(0.5 * (0 + this->grid->GridsNum())));
+    // customized initializing strategies according to different priori information of spectrum
+//    // delta-like distribution
+//    const double delta_freq = -2.0;
+//    this->data->locations = Eigen::VectorXi::Constant(this->data->ndelta, this->grid->Freq2GridIndex(delta_freq));
 
+    // rectangle-like distribution
+    const double left_edge = -7.0;
+    const double right_edge = 7.0;
+    const int left_edge_index = this->grid->Freq2GridIndex(left_edge);
+    const int right_edge_index = this->grid->Freq2GridIndex(right_edge);
+    const int rectangle_len = right_edge_index - left_edge_index + 1;
+    this->data->locations.resize(this->data->ndelta);
+    for (int i = 0; i < this->data->locations.size(); ++i) {
+        this->data->locations(i) = left_edge_index + i % rectangle_len;
+    }
+
+//    // random distribution
+//    std::uniform_int_distribution<> rand_delta(0, this->grid->GridsNum()-1);
+//    this->data->locations.resize(this->data->ndelta);
+//    for (int i = 0; i < this->data->locations.size(); ++i) {
+//        this->data->locations(i) = rand_delta(rand_engine_sac);
+////        assert( this->data->locations(i) >=0 );
+////        assert( this->data->locations(i) < this->grid->GridsNum() );
+//    }
+
+//    // TODO: gaussian-like distribution
+//    const double gaussian_peak = 1.0;
+//    const double gaussian_sigma = 1.0;
+//    // filling from peak to edges
+
+    // initialize amplitudes of delta functions
     // equal amplitudes (scaled)
+    // Caution: 1.0 comes from normalization of spectrum
+    // TODO: extend to arbitrary normalization factor
     this->data->amplitude = 1.0 / (this->scale_factor * this->data->ndelta);
 
-    // width of random move window
+    // initialize width of random move window
     // FIXME: 1/10 of average frequency ?
     const double average_freq = abs(log(1.0/this->readin->corr_mean[nt-1]) / this->tau[nt-1]);
     this->data->window_width = ceil( 0.1 * average_freq / this->grid->GridInterval() );
@@ -154,6 +184,7 @@ void Simulation::SAC::update_deltas_1step_single() {
     // helping params
     std::uniform_int_distribution<> rand_delta(0, this->data->ndelta-1);
     std::uniform_int_distribution<> rand_width(1, this->data->window_width);
+    std::uniform_int_distribution<> rand_location(0, this->grid->GridsNum()-1);
     int select_delta;
     int move_width;
     int location_current;
@@ -166,21 +197,29 @@ void Simulation::SAC::update_deltas_1step_single() {
     for (int i = 0; i < this->data->ndelta; ++i) {
         // randomly select one delta function
         select_delta = rand_delta(rand_engine_sac);
-        move_width = rand_width(rand_engine_sac);
         location_current = this->data->locations[select_delta];
 
-        if (std::bernoulli_distribution(0.5)(rand_engine_sac)) {
-            location_updated = location_current + move_width;
-        }
-        else {
-            location_updated = location_current - move_width;
-        }
+        if (this->data->window_width >= 0 && this->data->window_width < this->grid->GridsNum()) {
+            // randomly move within window
+            move_width = rand_width(rand_engine_sac);
+            if (std::bernoulli_distribution(0.5)(rand_engine_sac)) {
+                location_updated = location_current + move_width;
+            }
+            else {
+                location_updated = location_current - move_width;
+            }
 
-        // abort updates if out of frequency domain
-        if (location_updated < 0 || location_updated >= this->grid->GridsNum()) {
-            i -= 1;
-            continue;
+            // abort updates if out of frequency domain
+            if (location_updated < 0 || location_updated >= this->grid->GridsNum()) {
+                i -= 1;
+                continue;
+            }
         }
+        else if (this->data->window_width == this->grid->GridsNum()) {
+            // randomly move over frequency domain
+            location_updated = rand_location(rand_engine_sac);
+        }
+        else { std::cerr << " Wrong occurs. CHECK! " << std::endl; exit(1); }
 
         // compute updated correlation
         this->corr_update = this->corr_current + this->data->amplitude *
@@ -215,6 +254,7 @@ void Simulation::SAC::update_deltas_1step_pair() {
     // helping params
     std::uniform_int_distribution<> rand_delta(0, this->data->ndelta-1);
     std::uniform_int_distribution<> rand_width(1, this->data->window_width);
+    std::uniform_int_distribution<> rand_location(0, this->grid->GridsNum()-1);
     int select_delta1, select_delta2;
     int move_width1, move_width2;
     int location_current1, location_current2;
@@ -233,29 +273,36 @@ void Simulation::SAC::update_deltas_1step_pair() {
         while ( select_delta1 == select_delta2 ) {
             select_delta2 = rand_delta(rand_engine_sac);
         }
-
-        // randomly select width of moving within window
-        move_width1 = rand_width(rand_engine_sac);
-        move_width2 = rand_width(rand_engine_sac);
         location_current1 = this->data->locations[select_delta1];
         location_current2 = this->data->locations[select_delta2];
 
-        if (std::bernoulli_distribution(0.5)(rand_engine_sac)) {
-            location_updated1 = location_current1 + move_width1;
-            location_updated2 = location_current2 - move_width2;
-        }
-        else {
-            location_updated1 = location_current1 - move_width1;
-            location_updated2 = location_current2 + move_width2;
-        }
+        if (this->data->window_width >=0 && this->data->window_width < this->grid->GridsNum()) {
+            // randomly select width of moving within window
+            move_width1 = rand_width(rand_engine_sac);
+            move_width2 = rand_width(rand_engine_sac);
+            if (std::bernoulli_distribution(0.5)(rand_engine_sac)) {
+                location_updated1 = location_current1 + move_width1;
+                location_updated2 = location_current2 - move_width2;
+            }
+            else {
+                location_updated1 = location_current1 - move_width1;
+                location_updated2 = location_current2 + move_width2;
+            }
 
-        // abort updates if out of frequency domain
-        out_of_domain1 = (location_updated1 < 0 || location_updated1 >= this->grid->GridsNum());
-        out_of_domain2 = (location_updated2 < 0 || location_updated2 >= this->grid->GridsNum());
-        if ( out_of_domain1 || out_of_domain2 ) {
-            i -= 1;
-            continue;
+            // abort updates if out of frequency domain
+            out_of_domain1 = (location_updated1 < 0 || location_updated1 >= this->grid->GridsNum());
+            out_of_domain2 = (location_updated2 < 0 || location_updated2 >= this->grid->GridsNum());
+            if ( out_of_domain1 || out_of_domain2 ) {
+                i -= 1;
+                continue;
+            }
         }
+        else if (this->data->window_width == this->grid->GridsNum()) {
+            // randomly move over frequency domain
+            location_updated1 = rand_location(rand_engine_sac);
+            location_updated2 = rand_location(rand_engine_sac);
+        }
+        else { std::cerr << " Wrong occurs. CHECK! " << std::endl; exit(1); }
 
         // compute updated correlation
         this->corr_update = this->corr_current + this->data->amplitude *

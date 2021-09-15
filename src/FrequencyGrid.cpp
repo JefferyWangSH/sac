@@ -40,6 +40,13 @@ const double Grid::FrequencyGrid::GridIndex2Freq(const int &grid_index) const{
     return this->omega_min + grid_index * this->grid_interval;
 }
 
+const int Grid::FrequencyGrid::Freq2GridIndex(const double &freq) const {
+    assert( freq >= this->omega_min && freq < this->omega_max );
+    int grid = ceil((freq - omega_min) / grid_interval);
+    assert( grid >= this->int_omega_min && grid < this->int_omega_max );
+    return grid;
+}
+
 const double Grid::FrequencyGrid::SpecIndex2Freq(const int &spec_index) const{
     assert( spec_index >= 0 );
     assert( spec_index < this->SpecNum() );

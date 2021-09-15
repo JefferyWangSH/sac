@@ -1,13 +1,78 @@
 #include <chrono>
 #include <fstream>
 #include <iostream>
-#include <boost/program_options.hpp>
+#include <iomanip>
 
+#include <boost/program_options.hpp>
 #include <boost/algorithm/string/split.hpp>
-#include <boost/algorithm/string/classification.hpp>
 #include <boost/algorithm/string/constants.hpp>
+#include <boost/algorithm/string/classification.hpp>
 
 #include "SAC.h"
+
+namespace Debug {
+
+    /**
+      * Subroutine to calculate fitting errors of correlations function after a SAC simulation was finished.
+      * The differences between recovered correlations and QMC measured correlations are calculated,
+      * which to some extent indicates the correctness of our accumulated spectrum.
+      *
+      * @param sac - SAC object which performed the SAC simulations
+      * @param spec_file - name of file which includes the recovered spectrum
+      */
+    void calculate_fitting_error(const Simulation::SAC &sac, const std::string &spec_file) {
+        // calculate fitting error of correlations
+        // first read spectrum information from file
+        std::vector<double> freq_vec;
+        std::vector<double> spec_vec;
+
+        std::ifstream infile;
+        infile.open(spec_file, std::ios::in);
+        if (!infile.is_open()) {
+            std::cerr << "fail to open file " + spec_file + "!" << std::endl;
+            exit(1);
+        }
+        std::string line;
+        std::vector<std::string> data;
+        getline(infile, line);
+        boost::split(data, line, boost::is_any_of(" "), boost::token_compress_on);
+        data.erase(std::remove(std::begin(data), std::end(data), ""), std::end(data));
+        while(getline(infile, line)) {
+            boost::split(data, line, boost::is_any_of(" "), boost::token_compress_on);
+            data.erase(std::remove(std::begin(data), std::end(data), ""), std::end(data));
+            freq_vec.push_back(boost::lexical_cast<double>(data[0]));
+            spec_vec.push_back(boost::lexical_cast<double>(data[1]));
+        }
+        infile.close();
+
+        // convert to eigen type
+        Eigen::VectorXd freq = Eigen::Map<Eigen::VectorXd>(freq_vec.data(), freq_vec.size());
+        Eigen::VectorXd spec = Eigen::Map<Eigen::VectorXd>(spec_vec.data(), spec_vec.size());
+
+        // generate kernel
+        Eigen::MatrixXd kernel(sac.nt, freq.size());
+        for (int t = 0; t < sac.nt; ++t) {
+            for (int f = 0; f < freq.size(); ++f) {
+                kernel(t, f) = exp(-freq[f]*sac.tau[t]) / (2*M_PI*(1+exp(-sac.beta*freq[f])));
+            }
+        }
+        // rotate and refactor
+        kernel = sac.readin->rotate_mat*kernel;
+        spec = spec/sac.scale_factor;
+
+        Eigen::VectorXd err = sac.grid->SpecInterval()*kernel*spec - sac.corr;
+        for (int i = 0; i < sac.readin->cov_mat_dim; ++i) {
+            std::cout << std::setiosflags(std::ios::right)
+                      << std::setw(15) << sac.readin->corr_mean[i]
+                      << std::setw(15) << sac.readin->corr_err[i]
+                      << std::setw(15) << sac.readin->cov_eig[i]
+                      << std::setw(15) << sac.corr[i]
+                      << std::setw(15) << err[i]
+                      << std::setw(15) << sac.sigma[i] << std::endl;
+        }
+    }
+
+}
 
 
 /** The main program */
@@ -102,7 +167,7 @@ int main(int argc, char *argv[]) {
     Simulation::SAC *sac = new Simulation::SAC();
 
     // customized input folder
-//    std::string folder_name = "L8b4U-4k0.500.50";
+//    std::string folder_name = "L8b5.00U-4.00";
     std::string folder_name = "benchmark";
     std::string in_path = "../input/" + folder_name;
     std::string out_path = "../results/" + folder_name;
@@ -131,6 +196,16 @@ int main(int argc, char *argv[]) {
 
     sac->init();
 
+//    // output initialization results
+//    for (int i = 0; i < sac->readin->cov_mat_dim; ++i) {
+//        std::cout << std::setiosflags(std::ios::right)
+//                  << std::setw(15) << sac->readin->corr_mean[i]
+//                  << std::setw(15) << sac->readin->corr_err[i]
+//                  << std::setw(15) << sac->readin->cov_eig[i]
+//                  << std::setw(15) << sac->corr[i]
+//                  << std::setw(15) << sac->sigma[i] << std::endl;
+//    }
+
     std::cout << "Initialization finished." << std::endl
               << "Annealing starts with params :" << std::endl
               << "  nt     = " << sac->nt << std::endl
@@ -154,60 +229,12 @@ int main(int argc, char *argv[]) {
 
     std::cout << "Accumulated spectrum has been writen into " + out_path + "/spec.dat ." << std::endl;
 
+    Debug::calculate_fitting_error(*sac, out_path + "/spec.dat");
+
     end_t = std::chrono::steady_clock::now();
     std::cout << "Total cost: "
               << (double)std::chrono::duration_cast<std::chrono::milliseconds>(end_t-begin_t).count()/1000
               << " s." << std::endl;
-
-    /** test **/
-//    std::vector<double> freq_vec;
-//    std::vector<double> spec_vec;
-//
-//    std::ifstream infile;
-//    infile.open("../input/benchmark/spec_base.dat", std::ios::in);
-//    if (!infile.is_open()) {
-//        exit(1);
-//    }
-//    std::string line;
-//    std::vector<std::string> data;
-//    getline(infile, line);
-//    boost::split(data, line, boost::is_any_of(" "), boost::token_compress_on);
-//    data.erase(std::remove(std::begin(data), std::end(data), ""), std::end(data));
-//    while(getline(infile, line)) {
-//        boost::split(data, line, boost::is_any_of(" "), boost::token_compress_on);
-//        data.erase(std::remove(std::begin(data), std::end(data), ""), std::end(data));
-//        freq_vec.push_back(boost::lexical_cast<double>(data[0]));
-//        spec_vec.push_back(boost::lexical_cast<double>(data[1]));
-//    }
-//    infile.close();
-//
-//
-//    Eigen::VectorXd freq(freq_vec.size()), spec(freq_vec.size());
-//    for (int f = 0; f < freq_vec.size(); ++f) {
-//        freq(f) = freq_vec[f];
-//        spec(f) = spec_vec[f];
-//    }
-//
-//    Eigen::MatrixXd kernel(sac->nt, freq.size());
-//    for (int t = 0; t < sac->nt; ++t) {
-//        for (int f = 0; f < freq.size(); ++f) {
-//            kernel(t, f) = exp(-freq[f]*sac->tau[t]) / (2*M_PI*(1+exp(-sac->beta*freq[f])));
-//        }
-//    }
-//    kernel = sac->readin->rotate_mat * kernel;
-//    spec = spec/sac->scale_factor;
-//
-//    std::cout << ((spec_interval*kernel*spec-sac->corr).array() * sac->sigma.array()).square().sum() << std::endl;
-//
-//    Eigen::VectorXd err = spec_interval*kernel*spec - sac->corr;
-//    for (int i = 0; i < sac->readin->cov_mat_dim; ++i) {
-//        std::cout << sac->readin->corr_mean[i] << "     "
-//                  << sac->readin->corr_err[i] << "     "
-//                  << sac->readin->cov_eig[i] << "     "
-//                  << err[i] << "     "
-//                  << sac->sigma[i] << std::endl;
-//    }
-
 
     delete sac;
     return 0;

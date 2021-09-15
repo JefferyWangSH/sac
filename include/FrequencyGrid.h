@@ -44,8 +44,9 @@ namespace Grid {
         /* number of intervals in accumulated spectrum */
         const int SpecNum() const;
 
-        /* convert discrete index of grids to continuum frequency */
+        /* conversion between discrete index of grids to continuum frequency */
         const double GridIndex2Freq(const int &grid_index) const;
+        const int Freq2GridIndex(const double &freq) const;
 
         /* convert discrete index of spectrum to continuum frequency */
         const double SpecIndex2Freq(const int &spec_index) const;
