@@ -1,7 +1,7 @@
-#include <iostream>
 #include "Kernel.h"
 #include "SAC.h"
 #include "FrequencyGrid.h"
+#include <iostream>
 
 Kernel::Kernel::Kernel(int nt, int nfreq) {
     this->nt = nt;

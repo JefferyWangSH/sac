@@ -1,5 +1,6 @@
 #include "ReadInModule.h"
-#include "DiagonalTools.hpp"
+#include "MatrixUtil.hpp"
+#include "Random.h"
 
 #include <fstream>
 #include <iostream>
@@ -136,7 +137,7 @@ void QMCData::ReadInModule::compute_corr_errs() {
     std::uniform_int_distribution<> rand_bin(0, this->nbin - 1);
     for (int i = 0; i < this->num_bootstrap; ++i) {
         for (int bin = 0; bin < this->nbin; bin++) {
-            this->sample_bootstrap.row(i) += this->corr_tau_bin.row(rand_bin(rand_engine_readin));
+            this->sample_bootstrap.row(i) += this->corr_tau_bin.row(rand_bin(Random::Engine));
         }
     }
     this->sample_bootstrap /= this->nbin;
@@ -174,14 +175,15 @@ void QMCData::ReadInModule::discard_poor_quality_data() {
     this->rotate_mat.resize(this->cov_mat_dim, this->cov_mat_dim);
 
     // reshape data and bootstrap samples
-    // prerequisite: Eigen version > 3.9.9
-    this->tau = this->tau(selected_tau);
-    this->corr_mean = this->corr_mean(selected_tau);
-    this->corr_err = this->corr_err(selected_tau);
-
-    const Eigen::VectorXi rows = Eigen::VectorXi::LinSpaced(this->num_bootstrap, 0, this->num_bootstrap);
-    const Eigen::MatrixXd sample_tmp = this->sample_bootstrap(rows, selected_tau);
-    this->sample_bootstrap = sample_tmp;
+    // prerequisite: Eigen version > 3.3.9
+    const Eigen::VectorXd& tmp_tau = this->tau(selected_tau);
+    const Eigen::VectorXd& tmp_corr_mean = this->corr_mean(selected_tau);
+    const Eigen::VectorXd& tmp_corr_err = this->corr_err(selected_tau);
+    const Eigen::MatrixXd& tmp_sample_bootstrap = this->sample_bootstrap(Eigen::all, selected_tau);
+    this->tau = tmp_tau;
+    this->corr_mean = tmp_corr_mean;
+    this->corr_err = tmp_corr_err;
+    this->sample_bootstrap = tmp_sample_bootstrap;
 }
 
 void QMCData::ReadInModule::compute_cov_matrix() {
@@ -215,7 +217,7 @@ void QMCData::ReadInModule::discard_and_rotate() {
     // for a real symmetric matrix, orthogonal transformation T satisfies
     //   T * C * T^dagger -> Eigen space
     // where T is rotation matrix, which is orthogonal.
-    mkl_lapack_dsyev(this->cov_mat_dim, this->cov_mat, this->cov_eig, this->rotate_mat);
+    MatrixUtil::mkl_lapack_dsyev(this->cov_mat_dim, this->cov_mat, this->cov_eig, this->rotate_mat);
 
     // alternative method with lower accuracy, using SVD
     // Eigen::MatrixXd u(cov_mat_dim, cov_mat_dim), v(cov_mat_dim, cov_mat_dim);

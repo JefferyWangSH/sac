@@ -19,15 +19,11 @@
  */
 
 #include <string>
-#include <random>
 
 #define EIGEN_USE_MKL_ALL
 #define EIGEN_VECTORIZE_SSE4_2
 #include <Eigen/Core>
 
-
-// random engine
-static std::default_random_engine rand_engine_readin(time(nullptr));
 
 namespace QMCData {
     class ReadInModule {

@@ -32,8 +32,14 @@
 *.app
 
 # Personal folders
-.git/
-.idea/
-build/
-cmake-build-debug/
-cmake-build-release/
+.git/*
+
+.idea/*
+.vscode/*
+
+build/*
+!build/runcmake.sh
+
+results/*
+!results/*.py
+!results/benchmark/*

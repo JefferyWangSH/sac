@@ -1,39 +1,39 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 2.8)
 
 project(sac)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -march=native -O3 -fopenmp ")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -march=native -O3 -fopenmp")
 
-## set up boost
+set(MKLROOT /public1/soft/intel/2020/compilers_and_libraries_2020.4.304/linux/mkl)
+set(MPIROOT /public1/soft/intel/2020/compilers_and_libraries_2020.4.304/linux/mpi/intel64)
+set(CMAKE_CXX_COMPILER ${MPIROOT}/bin/mpicxx)
+set(CMAKE_C_COMPILER ${MPIROOT}/bin/mpicc)
+
+set(BOOSTROOT /public1/soft/boost/1-55-0)
 set(Boost_USE_RELEASE_lIBS ON)
 set(Boost_USE_MULTITHREAD ON)
 
+set(EIGENROOT /public1/home/sc81233/xuchengwang/local/eigen-3.4.0)
+
 include_directories(
-        ${EIGEN3_INCLUDE_DIR}
-        /usr/include/eigen3
-        /opt/intel/oneapi/mkl/latest/include/
-        /usr/local/include/boost
+        ${MKLROOT}/include
+        ${MPIROOT}/include
+        ${BOOSTROOT}/include/boost
+        ${EIGENROOT}
 )
 
 link_directories(
-        /opt/intel/oneapi/mkl/latest/lib/intel64                        # mkl
-        /opt/intel/oneapi/compiler/latest/linux/compiler/lib/intel64    # linux openmp library, specifically libiomp5.so
-        /usr/local/lib                                                  # boost
+        ${MKLROOT}/lib/intel64
+        ${MPIROOT}/lib
+        ${BOOSTROOT}/lib
 )
 
-add_executable(${PROJECT_NAME}
-        src/main.cpp
-        src/SAC.cpp
-        src/ReadInModule.cpp
-        src/FrequencyGrid.cpp
-        src/Kernel.cpp
-        src/AnnealChain.cpp
-        src/Measure.cpp
-        src/DiagonalTools.hpp
-)
+aux_source_directory(${PROJECT_SOURCE_DIR}/src SRC_DIR)
 
-target_include_directories(${PROJECT_NAME}
-        PRIVATE
+add_executable(${PROJECT_NAME} ${SRC_DIR})
+
+target_include_directories(${PROJECT_NAME} 
+        PRIVATE 
         ${PROJECT_SOURCE_DIR}/include
 )
 
@@ -49,4 +49,6 @@ target_link_libraries(${PROJECT_NAME}
         pthread
         m
         boost_program_options
+        boost_mpi
+        boost_serialization
 )

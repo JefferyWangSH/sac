@@ -10,26 +10,19 @@
   *  which are obtained previously by QMC calculations.
   */
 
-#include <random>
-
 #define EIGEN_USE_MKL_ALL
 #define EIGEN_VECTORIZE_SSE4_2
 #include <Eigen/Core>
 
-#include "ReadInModule.h"
-#include "FrequencyGrid.h"
-#include "Kernel.h"
-#include "AnnealChain.h"
-#include "Measure.h"
+namespace Grid { class FrequencyGrid; }
+namespace Kernel { class Kernel; }
+namespace Annealing { class AnnealData; class AnnealChain; }
+namespace QMCData { class ReadInModule; }
+namespace Measure { class Measure; }
 
-// random engine
-static std::default_random_engine rand_engine_sac(time(nullptr));
-
-namespace Kernel {
-    class Kernel;
-}
 
 namespace Simulation {
+    
     class SAC {
     public:
 
@@ -97,7 +90,7 @@ namespace Simulation {
         void set_griding_params(double grid_interval, double spec_interval, double omega_min, double omega_max);
 
         /* set up parameters for sampling procedure */
-        void set_sampling_params(double ndelta, double theta, int max_annealing_steps, int bin_num, int bin_size, int collecting_steps);
+        void set_sampling_params(int ndelta, double theta, int max_annealing_steps, int bin_num, int bin_size, int collecting_steps);
 
         /* set up parameters controlling simulation modes */
         void set_mode_params(const std::string &kernel_mode, const std::string &update_mode);

@@ -1,4 +1,10 @@
 #include "SAC.h"
+#include "ReadInModule.h"
+#include "FrequencyGrid.h"
+#include "Kernel.h"
+#include "AnnealChain.h"
+#include "Measure.h"
+#include "Random.h"
 
 #include <iostream>
 #include <fstream>
@@ -44,7 +50,7 @@ void Simulation::SAC::set_griding_params(double grid_interval, double spec_inter
     this->grid = new Grid::FrequencyGrid(grid_interval, spec_interval, omega_min, omega_max);
 }
 
-void Simulation::SAC::set_sampling_params(double ndelta, double theta, int max_annealing_steps, int _bin_num, int _bin_size, int _collecting_steps) {
+void Simulation::SAC::set_sampling_params(int ndelta, double theta, int max_annealing_steps, int _bin_num, int _bin_size, int _collecting_steps) {
     this->data = new Annealing::AnnealData();
     this->data->ndelta = ndelta;
     this->data->theta = theta;
@@ -114,13 +120,14 @@ void Simulation::SAC::init_from_module() {
 void Simulation::SAC::init_spectrum() {
     // initialize locations of delta functions
     // customized initializing strategies according to different priori information of spectrum
+
 //    // delta-like distribution
 //    const double delta_freq = -2.0;
 //    this->data->locations = Eigen::VectorXi::Constant(this->data->ndelta, this->grid->Freq2GridIndex(delta_freq));
 
     // rectangle-like distribution
-    const double left_edge = -7.0;
-    const double right_edge = 7.0;
+    const double left_edge = -2.0;
+    const double right_edge = 2.0;
     const int left_edge_index = this->grid->Freq2GridIndex(left_edge);
     const int right_edge_index = this->grid->Freq2GridIndex(right_edge);
     const int rectangle_len = right_edge_index - left_edge_index + 1;
@@ -133,7 +140,7 @@ void Simulation::SAC::init_spectrum() {
 //    std::uniform_int_distribution<> rand_delta(0, this->grid->GridsNum()-1);
 //    this->data->locations.resize(this->data->ndelta);
 //    for (int i = 0; i < this->data->locations.size(); ++i) {
-//        this->data->locations(i) = rand_delta(rand_engine_sac);
+//        this->data->locations(i) = rand_delta(Random::Engine);
 ////        assert( this->data->locations(i) >=0 );
 ////        assert( this->data->locations(i) < this->grid->GridsNum() );
 //    }
@@ -151,14 +158,15 @@ void Simulation::SAC::init_spectrum() {
 
     // initialize width of random move window
     // FIXME: 1/10 of average frequency ?
-    const double average_freq = abs(log(1.0/this->readin->corr_mean[nt-1]) / this->tau[nt-1]);
-    this->data->window_width = ceil( 0.1 * average_freq / this->grid->GridInterval() );
+    const double average_freq = std::abs(log(1.0/this->readin->corr_mean[nt-1]) / this->tau[nt-1]);
+    this->data->window_width = std::ceil( 0.1 * average_freq / this->grid->GridInterval() );
+    // this->data->window_width = std::std::ceil( 0.5 * this->grid->GridsNum() );
 }
 
 
 void Simulation::SAC::compute_corr_from_spec() {
     // Prerequisite: Eigen version > 3.3.9
-    const Eigen::MatrixXd tmp_kernel = this->kernel->kernel(Eigen::VectorXi::LinSpaced(this->nt, 0, this->nt), this->data->locations);
+    const Eigen::MatrixXd& tmp_kernel = this->kernel->kernel(Eigen::all, this->data->locations);
     this->corr_current = tmp_kernel * Eigen::VectorXd::Constant(this->data->ndelta, this->data->amplitude);
 }
 
@@ -196,13 +204,13 @@ void Simulation::SAC::update_deltas_1step_single() {
     // attempt to move for ndelta times
     for (int i = 0; i < this->data->ndelta; ++i) {
         // randomly select one delta function
-        select_delta = rand_delta(rand_engine_sac);
+        select_delta = rand_delta(Random::Engine);
         location_current = this->data->locations[select_delta];
 
-        if (this->data->window_width >= 0 && this->data->window_width < this->grid->GridsNum()) {
+        if (this->data->window_width > 0 && this->data->window_width < this->grid->GridsNum()) {
             // randomly move within window
-            move_width = rand_width(rand_engine_sac);
-            if (std::bernoulli_distribution(0.5)(rand_engine_sac)) {
+            move_width = rand_width(Random::Engine);
+            if (std::bernoulli_distribution(0.5)(Random::Engine)) {
                 location_updated = location_current + move_width;
             }
             else {
@@ -217,9 +225,9 @@ void Simulation::SAC::update_deltas_1step_single() {
         }
         else if (this->data->window_width == this->grid->GridsNum()) {
             // randomly move over frequency domain
-            location_updated = rand_location(rand_engine_sac);
+            location_updated = rand_location(Random::Engine);
         }
-        else { std::cerr << " Wrong occurs. CHECK! " << std::endl; exit(1); }
+        else { std::cerr << " Wrong occurs, check the width of updating window ! " << std::endl; exit(1); }
 
         // compute updated correlation
         this->corr_update = this->corr_current + this->data->amplitude *
@@ -229,7 +237,7 @@ void Simulation::SAC::update_deltas_1step_single() {
         chi2_updated = this->compute_goodness(this->corr_update);
         p = exp( (this->chi2 - chi2_updated) / (2.0 * this->data->theta) );
 
-        if ( std::bernoulli_distribution(std::min(p, 1.0))(rand_engine_sac) ) {
+        if ( std::bernoulli_distribution(std::min(p, 1.0))(Random::Engine) ) {
             // accepted
             this->data->locations[select_delta] = location_updated;
             this->corr_current = this->corr_update;
@@ -266,21 +274,21 @@ void Simulation::SAC::update_deltas_1step_pair() {
 
     // attempt to move for ndelta/2 times
     // moving pair of deltas in an attempt
-    for (int i = 0; i < ceil(this->data->ndelta/2); i++) {
+    for (int i = 0; i < std::ceil(this->data->ndelta/2); i++) {
         // randomly select two different delta functions
-        select_delta1 = rand_delta(rand_engine_sac);
+        select_delta1 = rand_delta(Random::Engine);
         select_delta2 = select_delta1;
         while ( select_delta1 == select_delta2 ) {
-            select_delta2 = rand_delta(rand_engine_sac);
+            select_delta2 = rand_delta(Random::Engine);
         }
         location_current1 = this->data->locations[select_delta1];
         location_current2 = this->data->locations[select_delta2];
 
         if (this->data->window_width >=0 && this->data->window_width < this->grid->GridsNum()) {
             // randomly select width of moving within window
-            move_width1 = rand_width(rand_engine_sac);
-            move_width2 = rand_width(rand_engine_sac);
-            if (std::bernoulli_distribution(0.5)(rand_engine_sac)) {
+            move_width1 = rand_width(Random::Engine);
+            move_width2 = rand_width(Random::Engine);
+            if (std::bernoulli_distribution(0.5)(Random::Engine)) {
                 location_updated1 = location_current1 + move_width1;
                 location_updated2 = location_current2 - move_width2;
             }
@@ -299,10 +307,10 @@ void Simulation::SAC::update_deltas_1step_pair() {
         }
         else if (this->data->window_width == this->grid->GridsNum()) {
             // randomly move over frequency domain
-            location_updated1 = rand_location(rand_engine_sac);
-            location_updated2 = rand_location(rand_engine_sac);
+            location_updated1 = rand_location(Random::Engine);
+            location_updated2 = rand_location(Random::Engine);
         }
-        else { std::cerr << " Wrong occurs. CHECK! " << std::endl; exit(1); }
+        else { std::cerr << " Wrong occurs, check the width of updating window ! " << std::endl; exit(1); }
 
         // compute updated correlation
         this->corr_update = this->corr_current + this->data->amplitude *
@@ -313,7 +321,7 @@ void Simulation::SAC::update_deltas_1step_pair() {
         chi2_updated = this->compute_goodness(this->corr_update);
         p = exp( (this->chi2 - chi2_updated) / (2.0 * this->data->theta) );
 
-        if ( std::bernoulli_distribution(std::min(p, 1.0))(rand_engine_sac) ) {
+        if ( std::bernoulli_distribution(std::min(p, 1.0))(Random::Engine) ) {
             // accepted
             this->data->locations[select_delta1] = location_updated1;
             this->data->locations[select_delta2] = location_updated2;
@@ -326,7 +334,7 @@ void Simulation::SAC::update_deltas_1step_pair() {
         }
     }
     // compute accepting radio
-    this->accept_radio = (double)accept_count / ceil(this->data->ndelta/2);
+    this->accept_radio = (double)accept_count / std::ceil(this->data->ndelta/2);
 }
 
 
@@ -353,11 +361,11 @@ void Simulation::SAC::update_fixed_theta() {
         // adjust width of window
         // make sure the accepting radio of random move is around 0.5
         if (this->measure->bin_accept_radio(n) > 0.5) {
-            this->data->window_width = (ceil(this->data->window_width * 1.5) < this->grid->GridsNum())?
-                                        ceil(this->data->window_width * 1.5) : this->grid->GridsNum();
+            this->data->window_width = (std::ceil(this->data->window_width * 1.5) < this->grid->GridsNum())?
+                                        std::ceil(this->data->window_width * 1.5) : this->grid->GridsNum();
         }
         if (this->measure->bin_accept_radio(n) < 0.4) {
-            this->data->window_width = ceil(this->data->window_width / 1.5);
+            this->data->window_width = std::ceil(this->data->window_width / 1.5);
         }
     }
 }
