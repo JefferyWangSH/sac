@@ -3,13 +3,13 @@
 #pragma once
 
 /**
- *  This source file includes some diagonalizing tools with C++/Eigen interface
- *  for diagonalizing real matrices using mkl and lapack.
- *  including:
- *    1. generalized SVD decomposition for arbitrary M * N matrices
- *    2. optimized diagonalizing mechanism for N * N real symmetric matrix
- *  The calculation accuracy and efficiency are guaranteed.
- */
+  *  This source file includes some diagonalizing tools with C++/Eigen interface
+  *  for diagonalizing real matrices using mkl and lapack.
+  *  including:
+  *    1. generalized SVD decomposition for arbitrary M * N matrices
+  *    2. optimized diagonalizing mechanism for N * N real symmetric matrix
+  *  The calculation accuracy and efficiency are guaranteed.
+  */
 
 
 #include <iostream>
@@ -106,6 +106,6 @@ namespace MatrixUtil {
         t = Eigen::Map<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::ColMajor>>(a, n, n);
     }
 
-} // namespce MatrixUtil
+} // namespace MatrixUtil
 
 #endif //MATRIX_UTIL_HPP

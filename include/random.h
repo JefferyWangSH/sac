@@ -14,7 +14,7 @@ namespace Random {
 
     // set up fixed seed
     void set_seed_fix(const int &seed);
-}
 
+} // namespace Random
 
 #endif // RANDOM_H

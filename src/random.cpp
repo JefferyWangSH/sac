@@ -1,4 +1,4 @@
-#include "Random.h"
+#include "random.h"
 
 namespace Random {
     // definition
@@ -12,5 +12,5 @@ namespace Random {
     // set up fixed seed
     void set_seed_fix(const int &seed) {
         Engine.seed(seed);
-    }
-}
+    }    
+} // namespace Random

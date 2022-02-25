@@ -10,12 +10,13 @@
 #include <boost/algorithm/string/constants.hpp>
 #include <boost/algorithm/string/classification.hpp>
 
-#include "SAC.h"
-#include "ReadInModule.h"
-#include "FrequencyGrid.h"
-#include "AnnealChain.h"
-#include "Measure.h"
-#include "Random.h"
+#include "sac.h"
+#include "qmc_data_reader.h"
+#include "freq_grids.h"
+#include "annealing_chain.h"
+#include "measure.h"
+#include "random.h"
+
 
 namespace Debug {
 
@@ -61,22 +62,22 @@ namespace Debug {
         Eigen::MatrixXd kernel(sac.nt, freq.size());
         for (int t = 0; t < sac.nt; ++t) {
             for (int f = 0; f < freq.size(); ++f) {
-                kernel(t, f) = exp(-freq[f]*sac.tau[t]) / (2*M_PI*(1+exp(-sac.beta*freq[f])));
+                kernel(t, f) = exp(-freq[f]*sac.tau_from_qmc[t]) / (2*M_PI*(1+exp(-sac.beta*freq[f])));
             }
         }
         // rotate and refactor
-        kernel = sac.readin->rotate_mat*kernel;
+        kernel = sac.qmc_data_reader->rotate_mat*kernel;
         spec = spec/sac.scale_factor;
 
-        Eigen::VectorXd err = sac.grid->SpecInterval()*kernel*spec - sac.corr;
-        for (int i = 0; i < sac.readin->cov_mat_dim; ++i) {
+        Eigen::VectorXd err = sac.grids->SpecInterval()*kernel*spec - sac.corr_from_qmc;
+        for (int i = 0; i < sac.qmc_data_reader->cov_mat_dim; ++i) {
             std::cout << std::setiosflags(std::ios::right)
-                      << std::setw(15) << sac.readin->corr_mean[i]
-                      << std::setw(15) << sac.readin->corr_err[i]
-                      << std::setw(15) << sac.readin->cov_eig[i]
-                      << std::setw(15) << sac.corr[i]
+                      << std::setw(15) << sac.qmc_data_reader->corr_mean_qmc[i]
+                      << std::setw(15) << sac.qmc_data_reader->corr_err_qmc[i]
+                      << std::setw(15) << sac.qmc_data_reader->cov_eig[i]
+                      << std::setw(15) << sac.corr_from_qmc[i]
                       << std::setw(15) << err[i]
-                      << std::setw(15) << sac.sigma[i] << std::endl;
+                      << std::setw(15) << sac.sigma_from_qmc[i] << std::endl;
         }
     }
 
@@ -100,7 +101,7 @@ namespace Customize {
     {
         // folder names
         const std::string& input_folder_path = "../input/" + input_folder_name;
-        const std::string& output_folder_path = "../results/" + input_folder_name;
+        const std::string& output_folder_path = "../output/" + input_folder_name;
         input_file_tau_path = input_folder_path + "/tau.dat";
         input_file_cor_path = input_folder_path + "/cor.dat";
         output_file_spec_path = output_folder_path + "/spec.dat";
@@ -125,7 +126,7 @@ namespace Customize {
             }
         }
         
-        // try to make correspongding output folder
+        // try to create corresponding output folder
         if ( access(output_folder_path.c_str(), 0) != 0 ) {
             const std::string& command = "mkdir " + output_folder_path;
             if ( system(command.c_str()) != 0 ) {
@@ -134,7 +135,7 @@ namespace Customize {
             }
         }
 
-        // delete previous log, if exist.
+        // delete previous log file if exist.
         if ( access(output_file_log_path.c_str(), 0) == 0 ) {
             const std::string& command = "rm " + output_file_log_path;
             if ( system(command.c_str()) != 0 ) {
@@ -230,8 +231,8 @@ int main(int argc, char *argv[]) {
     /** SAC simulations */
     Simulation::SAC *sac = new Simulation::SAC();
     
-    // // set up seeds for simulation
-    // // fixed seed for debug
+    // set up random seeds for simulation
+    // fixed seed for debug
     // Random::set_seed_fix(12345);
     // Random::set_seed_fix(time(nullptr));
 
@@ -260,11 +261,11 @@ int main(int argc, char *argv[]) {
     sac->init();
 
     // // output initialization results
-    // for (int i = 0; i < sac->readin->cov_mat_dim; ++i) {
+    // for (int i = 0; i < sac->qmc_data_reader->cov_mat_dim; ++i) {
     //     std::cout << std::setiosflags(std::ios::right)
-    //               << std::setw(15) << sac->readin->corr_mean[i]
-    //               << std::setw(15) << sac->readin->corr_err[i]
-    //               << std::setw(15) << sac->readin->cov_eig[i]
+    //               << std::setw(15) << sac->qmc_data_reader->corr_mean[i]
+    //               << std::setw(15) << sac->qmc_data_reader->corr_err[i]
+    //               << std::setw(15) << sac->qmc_data_reader->cov_eig[i]
     //               << std::setw(15) << sac->corr[i]
     //               << std::setw(15) << sac->sigma[i] << std::endl;
     // }
@@ -280,10 +281,10 @@ int main(int argc, char *argv[]) {
     const std::string& joiner = "->";
     std::cout << " Annealing starts with following parameters :" << std::endl;
     std::cout << fmt_param_int % "Number of tau points `nt`" % joiner % sac->nt << std::endl;
-    std::cout << fmt_param_double % "Sampling temperature `theta`" % joiner % sac->data->theta << std::endl;
-    std::cout << fmt_param_int % "Number of MC sweep `nsweep`" % joiner % sac->measure->sbin << std::endl;
+    std::cout << fmt_param_double % "Sampling temperature `theta`" % joiner % sac->annealing_data->theta << std::endl;
+    std::cout << fmt_param_int % "Number of MC sweep `nsweep`" % joiner % sac->measure->size_of_bin << std::endl;
     std::cout << fmt_param_int % "Number of bins `nbin`" % joiner % sac->measure->nbin << std::endl;
-    std::cout << fmt_param_range % "Range of spectrum `omega`" % joiner % sac->grid->GridIndex2Freq(0) % sac->grid->GridIndex2Freq(sac->grid->GridsNum()-1) << std::endl;
+    std::cout << fmt_param_range % "Range of spectrum `omega`" % joiner % sac->grids->FreqIndex2Freq(0) % sac->grids->FreqIndex2Freq(sac->grids->FreqNum()-1) << std::endl;
     std::cout << " Annealing process ... \n " << std::endl;
 
     // annealing process

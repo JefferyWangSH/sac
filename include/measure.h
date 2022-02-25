@@ -5,7 +5,7 @@
 /**
   *  This header file includes `Measure` class for monitoring and measuring `chi2` and average accepting rate
   *  during the MC update of delta functions at a given fictitious temperature `theta`.
-  *  Bin calculation of means and errors are performed in this file.
+  *  Bin calculation of mean values and error esitimation are implemented.
   */
 
 #define EIGEN_USE_MKL_ALL
@@ -14,39 +14,37 @@
 
 
 namespace Measure{
+    
     class Measure {
-
     public:
-
         // number of bins
         int nbin{};
 
         // bin size, number of samples within one bin
-        int sbin{};
+        int size_of_bin{};
 
         // measurements of chi2 and accepting radio
         double chi2_mean{}, chi2_err{};
         double accept_radio_mean{}, accept_radio_err{};
 
-        // data samples collected from Monte Carlo, index labels collection sequence
-        Eigen::VectorXd sample_chi2;
-        Eigen::VectorXd sample_accept_radio;
+        // data samples collected during Monte Carlo process, index labels the time sequence of collection
+        Eigen::VectorXd chi2_sample{};
+        Eigen::VectorXd accept_radio_sample{};
 
-        // means of data sorted by number of bin
-        Eigen::VectorXd bin_chi2;
-        Eigen::VectorXd bin_accept_radio;
+        // means of data sorted by bin index
+        Eigen::VectorXd chi2_bin{};
+        Eigen::VectorXd accept_radio_bin{};
 
     public:
-
         Measure() = default;
 
-        Measure(int nbin, int sbin);
+        Measure(int nbin, int size_of_bin);
 
         /* resize dimensions */
-        void resize(int nbin, int sbin);
+        void resize(int nbin, int size_of_bin);
 
-        /* fill data */
-        void fill(int s, double chi2, double accept_radio);
+        /* collect data */
+        void collect(int s, double chi2, double accept_radio);
 
         /* analyse measurements for one certain bin */
         void bin_analyse(int n);
@@ -57,12 +55,13 @@ namespace Measure{
         /* clear previous statistics data */
         void clear();
 
-        /* return mean of chi2 */
-        const double chi2() const;
+        /* return mean value of chi2 */
+        double chi2() const;
 
-        /* return mean of accepting radio */
-        const double accept_radio() const;
+        /* return mean value of accepting radio */
+        double accept_radio() const;
     };
-}
+
+} // namespace Measure
 
 #endif //SAC_MEASURE_H
