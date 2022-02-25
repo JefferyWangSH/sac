@@ -1,54 +1,46 @@
-cmake_minimum_required(VERSION 2.8)
-
+# project
+cmake_minimum_required(VERSION 3.21)
 project(sac)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_FLAGS "-march=native -O3 -fopenmp")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -march=native -O3 -fopenmp")
+# target
+aux_source_directory(${PROJECT_SOURCE_DIR}/src SOURCE_DIR)
+add_executable(${PROJECT_NAME} ${SOURCE_DIR})
+target_include_directories(${PROJECT_NAME} PRIVATE ${PROJECT_SOURCE_DIR}/include)
 
-set(MKLROOT /public1/soft/intel/2020/compilers_and_libraries_2020.4.304/linux/mkl)
-set(MPIROOT /public1/soft/intel/2020/compilers_and_libraries_2020.4.304/linux/mpi/intel64)
-set(CMAKE_CXX_COMPILER ${MPIROOT}/bin/mpicxx)
-set(CMAKE_C_COMPILER ${MPIROOT}/bin/mpicc)
+# find MKL
+find_package(MKL MODULE REQUIRED)
+if (MKL_FOUND)
+    message(STATUS "Found MKL (mkl_include_dir): ${MKL_INCLUDE_DIR}")
+    message(STATUS "Found MKL (mkl_library_dir): ${MKL_LIBRARY_DIR}")
+    target_include_directories(${PROJECT_NAME} PRIVATE ${MKL_INCLUDE_DIR})
+    target_link_libraries(${PROJECT_NAME} PRIVATE ${MKL_LIBRARIES})
+else()
+    message(FATAL_ERROR "MKL not found")
+endif()
 
-set(BOOSTROOT /public1/soft/boost/1-55-0)
-set(Boost_USE_RELEASE_lIBS ON)
-set(Boost_USE_MULTITHREAD ON)
+# find Eigen3
+find_package(Eigen3 MODULE 3.3.9 REQUIRED)
+if (Eigen3_FOUND)
+    message(STATUS "Found Eigen3 (eigen3_include_dir): ${EIGEN3_INCLUDE_DIR}")
+    target_link_libraries (${PROJECT_NAME} PRIVATE Eigen3::Eigen)
+else()
+    message(FATAL_ERROR "Eigen3 not found")
+endif()
 
-set(EIGENROOT /public1/home/sc81233/xuchengwang/local/eigen-3.4.0)
-
-include_directories(
-        ${MKLROOT}/include
-        ${MPIROOT}/include
-        ${BOOSTROOT}/include/boost
-        ${EIGENROOT}
-)
-
-link_directories(
-        ${MKLROOT}/lib/intel64
-        ${MPIROOT}/lib
-        ${BOOSTROOT}/lib
-)
-
-aux_source_directory(${PROJECT_SOURCE_DIR}/src SRC_DIR)
-
-add_executable(${PROJECT_NAME} ${SRC_DIR})
-
-target_include_directories(${PROJECT_NAME} 
-        PRIVATE 
-        ${PROJECT_SOURCE_DIR}/include
-)
-
-target_link_libraries(${PROJECT_NAME}
-        mkl_gf_lp64
-        mkl_intel_thread
-        mkl_gnu_thread
-        mkl_blas95_lp64
-        mkl_intel_lp64
-        mkl_sequential
-        iomp5
-        mkl_core
-        pthread
-        m
-        boost_program_options
-        boost_mpi
-        boost_serialization
-)
+# find Boost
+find_package(Boost MODULE 1.71.0 COMPONENTS program_options REQUIRED)
+if (Boost_FOUND)
+    message(STATUS "Found Boost: version ${Boost_VERSION}")
+    message(STATUS "Found Boost (boost_include_dirs): ${Boost_INCLUDE_DIRS}")
+    message(STATUS "Found Boost (boost_library_dirs): ${Boost_LIBRARY_DIRS}")
+    set(Boost_USE_RELEASE_lIBS ON)
+    set(Boost_USE_MULTITHREAD ON)
+    target_include_directories(${PROJECT_NAME} PRIVATE ${Boost_INCLUDE_DIRS})
+    target_link_libraries (${PROJECT_NAME} PRIVATE ${Boost_LIBRARIES})
+else()
+    message(FATAL_ERROR "Boost not found")
+endif()
