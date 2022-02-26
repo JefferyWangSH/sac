@@ -16,7 +16,7 @@ theta=1e6
 kernel_type="fermion"
 update_type="single"
 
-folder_name="L8b8.00u-4.00"
+folder_name="benchmark"
 output_folder="../output/"$folder_name
 tau_file_path="../input/"$folder_name"/tau.dat"
 corr_file_path="../input/"$folder_name"/cor.dat"
