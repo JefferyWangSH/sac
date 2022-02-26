@@ -60,20 +60,21 @@ namespace DataReader {
         getline(infile, line);
         boost::split(data, line, boost::is_any_of(" "), boost::token_compress_on);
         data.erase(std::remove(std::begin(data), std::end(data), ""), std::end(data));
-        if ( this->lt != boost::lexical_cast<int>(data[0]) || this->beta != boost::lexical_cast<double>(data[1]) ) {
-            std::cerr << " Inconsistence between QMC params and input QMC file, check the input. \n" << std::endl;
+        if ( this->lt != boost::lexical_cast<int>(data[0]) ) {
+            std::cerr << " Inconsistence between QMC params 'lt' and input QMC file, check the input. \n" << std::endl;
+            exit(1);
+        }
+        if ( this->beta != boost::lexical_cast<double>(data[1]) ) {
+            std::cerr << " Inconsistence between QMC params 'beta' and input QMC file, check the input. \n" << std::endl;
             exit(1);
         }
 
-        int t = 0;
-        while(getline(infile, line)) {
+        for (int t = 0; t < this->lt; ++t) {
+            getline(infile, line);
             boost::split(data, line, boost::is_any_of(" "), boost::token_compress_on);
             data.erase(std::remove(std::begin(data), std::end(data), ""), std::end(data));
-            this->tau_qmc[t] = boost::lexical_cast<double>(data[0]);
-            t++;
+            this->tau_qmc[t] = boost::lexical_cast<double>(data[1]);
         }
-        // check the consistence between input data and model settings for second time
-        assert( this->lt == t );
         infile.close();
     }
 
@@ -92,7 +93,11 @@ namespace DataReader {
         boost::split(data, line, boost::is_any_of(" "), boost::token_compress_on);
         data.erase(std::remove(std::begin(data), std::end(data), ""), std::end(data));
         if ( this->nbin_total != boost::lexical_cast<int>(data[0]) ) {
-            std::cerr << " Inconsistence between QMC params and input QMC file, check the input. \n" << std::endl;
+            std::cerr << " Inconsistence between QMC params 'nbin' and input QMC file, check the input. \n" << std::endl;
+            exit(1);
+        }
+        if ( this->lt != boost::lexical_cast<double>(data[1]) ) {
+            std::cerr << " Inconsistence between QMC params 'lt' and input QMC file, check the input. \n" << std::endl;
             exit(1);
         }
         // clear previous data
@@ -101,12 +106,11 @@ namespace DataReader {
         // rebin and read data
         for (int bin = 0; bin < this->nbin; ++bin) {
             for (int rebin = 0; rebin < this->rebin_pace; ++rebin) {
-                getline(infile, line);
-                for (int l = 0; l < this->lt; ++l) {
+                for (int t = 0; t < this->lt; ++t) {
                     getline(infile, line);
                     boost::split(data, line, boost::is_any_of(" "), boost::token_compress_on);
                     data.erase(std::remove(std::begin(data), std::end(data), ""), std::end(data));
-                    this->bin_data_qmc(bin, l) += boost::lexical_cast<double>(data[0]);
+                    this->bin_data_qmc(bin, t) += boost::lexical_cast<double>(data[2]);
                 }
             }
         }

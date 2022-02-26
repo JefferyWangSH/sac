@@ -15,12 +15,12 @@ namespace Simulation {
     }
 
     void SAC::set_file_path_tau(const std::string &tau_file_path) {
-        assert(this->qmc_data_reader);
+        assert( this->qmc_data_reader );
         this->qmc_data_reader->read_tau_from_file(tau_file_path);
     }
 
     void SAC::set_file_path_corr(const std::string &corr_file_path) {
-        assert(this->qmc_data_reader);
+        assert( this->qmc_data_reader );
         this->qmc_data_reader->read_corr_from_file(corr_file_path);
     }
 
@@ -58,10 +58,10 @@ namespace Simulation {
     }
 
     void SAC::init() {
-        assert(this->qmc_data_reader);
-        assert(this->annealing_data && this->annealing_chain);
-        assert(this->measure);
-        assert(this->grids);
+        assert( this->qmc_data_reader );
+        assert( this->annealing_data && this->annealing_chain );
+        assert( this->measure );
+        assert( this->grids );
 
         // initialize read in module
         this->init_from_module();
@@ -95,7 +95,7 @@ namespace Simulation {
     }
 
     void SAC::init_from_module() {
-        assert(this->qmc_data_reader);
+        assert( this->qmc_data_reader );
         this->qmc_data_reader->analyse_corr();
         this->qmc_data_reader->discard_and_rotate();
 
@@ -109,39 +109,36 @@ namespace Simulation {
     }
 
     void SAC::init_spectrum() {
-        assert(this->annealing_data);
+        assert( this->annealing_data );
 
         // initialize locations of delta functions
         // customized initializing strategies according to different priori information of spectrum
-
-    //    // delta-like distribution
-    //    const double delta_freq = -2.0;
-    //    this->annealing_data->locations = Eigen::VectorXi::Constant(this->annealing_data->ndelta, this->grids->Freq2GridIndex(delta_freq));
-
-        // rectangle-like distribution
-        const double left_edge = -2.0;
-        const double right_edge = 2.0;
-        const int left_edge_index = this->grids->Freq2FreqIndex(left_edge);
-        const int right_edge_index = this->grids->Freq2FreqIndex(right_edge);
-        const int rectangle_len = right_edge_index - left_edge_index + 1;
+        // random distribution
+        std::uniform_int_distribution<> rand_delta(0, this->grids->FreqNum()-1);
         this->annealing_data->locations.resize(this->annealing_data->ndelta);
         for (int i = 0; i < this->annealing_data->locations.size(); ++i) {
-            this->annealing_data->locations(i) = left_edge_index + i % rectangle_len;
+            this->annealing_data->locations(i) = rand_delta(Random::Engine);
         }
 
-    //    // random distribution
-    //    std::uniform_int_distribution<> rand_delta(0, this->grids->FreqNum()-1);
-    //    this->annealing_data->locations.resize(this->annealing_data->ndelta);
-    //    for (int i = 0; i < this->annealing_data->locations.size(); ++i) {
-    //        this->annealing_data->locations(i) = rand_delta(Random::Engine);
-    //     //    assert( this->annealing_data->locations(i) >=0 );
-    //     //    assert( this->annealing_data->locations(i) < this->grids->FreqNum() );
-    //    }
+        // // delta-like distribution
+        // double delta_freq = -2.0;
+        // this->annealing_data->locations = Eigen::VectorXi::Constant(this->annealing_data->ndelta, this->grids->Freq2GridIndex(delta_freq));
 
-    //    // TODO: gaussian-like distribution
-    //    const double gaussian_peak = 1.0;
-    //    const double gaussian_sigma = 1.0;
-    //    // filling from peak to edges
+        // // rectangle-like distribution
+        // double left_edge = -2.0;
+        // double right_edge = 2.0;
+        // int left_edge_index = this->grids->Freq2FreqIndex(left_edge);
+        // int right_edge_index = this->grids->Freq2FreqIndex(right_edge);
+        // int rectangle_len = right_edge_index - left_edge_index + 1;
+        // this->annealing_data->locations.resize(this->annealing_data->ndelta);
+        // for (int i = 0; i < this->annealing_data->locations.size(); ++i) {
+        //     this->annealing_data->locations(i) = left_edge_index + i % rectangle_len;
+        // }
+
+        // // TODO: gaussian-like distribution
+        // double gaussian_peak = 1.0;
+        // double gaussian_sigma = 1.0;
+        // // filling from peak to edges
 
         // initialize amplitudes of delta functions
         // equal amplitudes (scaled)
@@ -158,7 +155,7 @@ namespace Simulation {
 
 
     void SAC::compute_corr_from_spec() {
-        assert(this->kernel && this->annealing_data);
+        assert( this->kernel && this->annealing_data );
         // Prerequisite: Eigen version > 3.3.9
         const Eigen::MatrixXd& tmp_kernel = this->kernel->kernel(Eigen::all, this->annealing_data->locations);
         this->corr_now = tmp_kernel * Eigen::VectorXd::Constant(this->annealing_data->ndelta, this->annealing_data->amplitude);
@@ -183,7 +180,7 @@ namespace Simulation {
       *  randomly move of one delta function for one single attempt
       */
     void SAC::update_deltas_1step_single() {
-        assert(this->annealing_data && this->grids && this->kernel);
+        assert( this->annealing_data && this->grids && this->kernel );
 
         // helping params
         std::uniform_int_distribution<> rand_delta(0, this->annealing_data->ndelta-1);
@@ -253,7 +250,7 @@ namespace Simulation {
       *  randomly move of two delta functions for one single attempt
       */
     void SAC::update_deltas_1step_pair() {
-        assert(this->annealing_data && this->grids && this->kernel); 
+        assert( this->annealing_data && this->grids && this->kernel ); 
         assert( this->annealing_data->ndelta >= 2 );
 
         // helping params
@@ -335,7 +332,7 @@ namespace Simulation {
     }
 
     void SAC::update_fixed_theta() {
-        assert(this->measure && this->annealing_data && this->grids);
+        assert( this->measure && this->annealing_data && this->grids );
         // total steps in a fixe theta: nbin * sbin
         for ( int n = 0; n < this->measure->nbin; ++n) {
             // n corresponds to index of bins
@@ -367,8 +364,8 @@ namespace Simulation {
     }
 
     void SAC::write_log(int n) {
-        assert(this->measure && this->grids);
-        assert(this->annealing_chain && this->annealing_data);
+        assert( this->measure && this->grids );
+        assert( this->annealing_chain && this->annealing_data );
         // n labels index of bin number
         // check if log file is empty
         std::ifstream check_empty(this->log_file_path, std::ios::in|std::ios::app);
@@ -406,8 +403,8 @@ namespace Simulation {
     }
 
     void SAC::perform_annealing() {
-        assert(this->measure);
-        assert(this->annealing_chain && this->annealing_data);
+        assert( this->measure );
+        assert( this->annealing_chain && this->annealing_data );
         // annealing process, no more than `max_length` steps
         for (int i = 0; i < this->annealing_chain->max_length; ++i) {
             // updating
@@ -429,7 +426,7 @@ namespace Simulation {
     }
 
     void SAC::decide_sampling_theta() {
-        assert(this->annealing_chain && this->annealing_data);
+        assert( this->annealing_chain && this->annealing_data );
         // decide sampling temperature by slightly increasing theta
         for (int i = this->annealing_chain->len()-1; i >= 0; --i) {
             // raise chi2 by a standard deviation with respect to the minimum
@@ -447,7 +444,7 @@ namespace Simulation {
 
 
     void SAC::sample_and_collect() {
-        assert(this->grids && this->annealing_data);
+        assert( this->grids && this->annealing_data );
         // equilibrate at current sampling temperature
         this->update_fixed_theta();
 
@@ -477,7 +474,7 @@ namespace Simulation {
     }
 
     void SAC::output_recovered_spectrum() {
-        assert(this->grids);
+        assert( this->grids );
         std::ofstream outfile(this->spec_file_path, std::ios::out|std::ios::trunc);
         if (!outfile.is_open()) {
             std::cerr << boost::format(" Fail to open file %s .\n") % this->spec_file_path << std::endl;

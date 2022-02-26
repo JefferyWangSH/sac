@@ -97,7 +97,7 @@ int main(int argc, char *argv[]) {
     double omega_max = 10.0;
 
     int ndelta = 1e3;
-    double theta = 20;
+    double theta = 1e6;
     int max_annealing_steps = 5e3;
     int bin_size = 4e3;
     int bin_num = 5;
@@ -136,8 +136,8 @@ int main(int argc, char *argv[]) {
                     "upper bound of frequency domain, default: 10.0")
             ("ndelta", boost::program_options::value<int>(&ndelta)->default_value(1e3),
                     "number of delta functions, default: 1e3")
-            ("theta", boost::program_options::value<double>(&theta)->default_value(20.0),
-                    "initial sampling temperature, default: 20.0")
+            ("theta", boost::program_options::value<double>(&theta)->default_value(1e6),
+                    "initial sampling temperature, default: 1e6")
             ("max-anneal-steps", boost::program_options::value<int>(&max_annealing_steps)->default_value(5e3),
                     "maximum MC steps for simulated annealing precess, default: 5e3")
             ("sbin", boost::program_options::value<int>(&bin_size)->default_value(4e3),
