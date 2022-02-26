@@ -46,10 +46,10 @@ namespace DataReader {
         this->corr_err_qmc.resize(0);
     }
 
-    void QMCDataReader::read_tau_from_file(const std::string &infile_tau_seq) {
-        std::ifstream infile(infile_tau_seq, std::ios::in);
+    void QMCDataReader::read_tau_from_file(const std::string &tau_file_path) {
+        std::ifstream infile(tau_file_path, std::ios::in);
         if (!infile.is_open()) {
-            std::cerr << boost::format(" Fail to open file %s, check the input.\n") % infile_tau_seq << std::endl;
+            std::cerr << boost::format(" Fail to open file %s, check the input.\n") % tau_file_path << std::endl;
             exit(1);
         }
         // temporary params
@@ -77,10 +77,10 @@ namespace DataReader {
         infile.close();
     }
 
-    void QMCDataReader::read_corr_from_file(const std::string &infile_g_bin) {
-        std::ifstream infile(infile_g_bin, std::ios::in);
+    void QMCDataReader::read_corr_from_file(const std::string &corr_file_path) {
+        std::ifstream infile(corr_file_path, std::ios::in);
         if (!infile.is_open()) {
-            std::cerr << boost::format(" Fail to open file %s, check the input.\n") % infile_g_bin << std::endl;
+            std::cerr << boost::format(" Fail to open file %s, check the input.\n") % corr_file_path << std::endl;
             exit(1);
         }
         // temporary params

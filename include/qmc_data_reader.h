@@ -55,11 +55,11 @@ namespace DataReader {
         /* set up module params */
         void set_params(int lt, double beta, int nbin, int rebin_pace, int bootstrap_num);
 
-        /* read sequence of imaginary time from input file */
-        void read_tau_from_file(const std::string &infile_tau_seq);
+        /* read imaginary-time grids from input file */
+        void read_tau_from_file(const std::string &tau_file_path);
 
         /* read sequence of correlation functions in terms of bins */
-        void read_corr_from_file(const std::string &infile_corr_bin);
+        void read_corr_from_file(const std::string &corr_file_path);
 
         /* calculate mean values and correlated errors of input correlation functions */
         void analyse_corr();

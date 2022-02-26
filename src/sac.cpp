@@ -1,9 +1,4 @@
 #include "sac.h"
-#include "qmc_data_reader.h"
-#include "freq_grids.h"
-#include "kernel.h"
-#include "annealing_chain.h"
-#include "measure.h"
 #include "random.h"
 
 #include <iostream>
@@ -13,62 +8,61 @@
 
 namespace Simulation {
 
-    SAC::SAC() {
-        this->qmc_data_reader = new DataReader::QMCDataReader();
-        this->grids = nullptr;
-        this->kernel = nullptr;
-        this->annealing_data = nullptr;
-        this->annealing_chain = nullptr;
-        this->measure = nullptr;
-    }
-
-    SAC::~SAC() {
-        delete this->grids;
-        delete this->kernel;
-        delete this->annealing_chain;
-        delete this->measure;
-        // avoid double free here, no need to delete data
-    //    delete this->annealing_data;
-    }
-
-    void SAC::set_read_in_params(int lt, double beta, int nbin, int rebin_pace, int bootstrap_num) {
+    void SAC::set_qmc_reader_params(int lt, double beta, int nbin, int rebin_pace, int bootstrap_num) {
+        if (this->qmc_data_reader) { this->qmc_data_reader.reset(); }
+        this->qmc_data_reader = std::make_unique<DataReader::QMCDataReader>();
         this->qmc_data_reader->set_params(lt, beta, nbin, rebin_pace, bootstrap_num);
     }
 
-    void SAC::set_filename_tau(const std::string &infile_tau) {
-        this->qmc_data_reader->read_tau_from_file(infile_tau);
+    void SAC::set_file_path_tau(const std::string &tau_file_path) {
+        assert(this->qmc_data_reader);
+        this->qmc_data_reader->read_tau_from_file(tau_file_path);
     }
 
-    void SAC::set_filename_corr(const std::string &infile_corr) {
-        this->qmc_data_reader->read_corr_from_file(infile_corr);
+    void SAC::set_file_path_corr(const std::string &corr_file_path) {
+        assert(this->qmc_data_reader);
+        this->qmc_data_reader->read_corr_from_file(corr_file_path);
     }
 
-    void SAC::set_filename_log(const std::string &outfile_log) {
-        this->log_name = outfile_log;
+    void SAC::set_outfile_path(const std::string &log_file_path, const std::string &spec_file_path) {
+        this->log_file_path = log_file_path;
+        this->spec_file_path = spec_file_path;
     }
 
     void SAC::set_griding_params(double freq_interval, double spec_interval, double freq_min, double freq_max) {
-        this->grids = new Grids::FreqGrids(freq_interval, spec_interval, freq_min, freq_max);
+        if (this->grids) { this->grids.reset(); }
+        this->grids = std::make_unique<Grids::FreqGrids>(freq_interval, spec_interval, freq_min, freq_max);
     }
 
     void SAC::set_sampling_params(int ndelta, double theta, int max_annealing_steps, int bin_num, int bin_size, int collecting_steps) {
-        this->annealing_data = new Annealing::AnnealingData();
+        if (this->annealing_data) { this->annealing_data.reset(); }
+        this->annealing_data = std::make_unique<Annealing::AnnealingData>();
         this->annealing_data->ndelta = ndelta;
         this->annealing_data->theta = theta;
         this->collecting_steps = collecting_steps;
 
-        this->annealing_chain = new Annealing::AnnealingChain(max_annealing_steps);
-        this->measure = new Measure::Measure(bin_num, bin_size);
+        if (this->annealing_chain) { this->annealing_chain.reset(); }
+        this->annealing_chain = std::make_unique<Annealing::AnnealingChain>(max_annealing_steps);
+        if (this->measure) { this->measure.reset(); }
+        this->measure = std::make_unique<Measure::Measure>(bin_num, bin_size);
     }
 
-    void SAC::set_mode_params(const std::string &kernel_type, const std::string &update_type) {
-        assert( update_type == "single" || update_type == "pair" );
-        this->update_type = update_type;
+    void SAC::set_kernel_type(const std::string &kernel_type) {
+        assert( kernel_type == "fermion" || kernel_type == "boson" );
         this->kernel_type = kernel_type;
     }
 
+    void SAC::set_update_type(const std::string &update_type) {
+        assert( update_type == "single" || update_type == "pair" );
+        this->update_type = update_type;
+    }
 
     void SAC::init() {
+        assert(this->qmc_data_reader);
+        assert(this->annealing_data && this->annealing_chain);
+        assert(this->measure);
+        assert(this->grids);
+
         // initialize read in module
         this->init_from_module();
 
@@ -79,7 +73,8 @@ namespace Simulation {
         this->init_spectrum();
 
         // initialize kernel
-        this->kernel = new Kernel::Kernel(this->nt, this->grids->FreqNum());
+        if (this->kernel) { this->kernel.reset(); }
+        this->kernel = std::make_unique<Kernel::Kernel>(this->nt, this->grids->FreqNum());
         this->kernel->init(*this, *this->grids, this->kernel_type);
         this->kernel->rotate(qmc_data_reader->rotate_mat);
 
@@ -97,15 +92,10 @@ namespace Simulation {
         // initialize containers for recovering spectrum
         this->freq.resize(this->grids->SpecNum());
         this->spec.resize(this->grids->SpecNum());
-
-        // free memory
-    //    // FIXME
-    //    this->qmc_data_reader->deallocate_memory();
-    //    delete this->qmc_data_reader;
-    //    this->qmc_data_reader = nullptr;
     }
 
     void SAC::init_from_module() {
+        assert(this->qmc_data_reader);
         this->qmc_data_reader->analyse_corr();
         this->qmc_data_reader->discard_and_rotate();
 
@@ -119,6 +109,8 @@ namespace Simulation {
     }
 
     void SAC::init_spectrum() {
+        assert(this->annealing_data);
+
         // initialize locations of delta functions
         // customized initializing strategies according to different priori information of spectrum
 
@@ -166,6 +158,7 @@ namespace Simulation {
 
 
     void SAC::compute_corr_from_spec() {
+        assert(this->kernel && this->annealing_data);
         // Prerequisite: Eigen version > 3.3.9
         const Eigen::MatrixXd& tmp_kernel = this->kernel->kernel(Eigen::all, this->annealing_data->locations);
         this->corr_now = tmp_kernel * Eigen::VectorXd::Constant(this->annealing_data->ndelta, this->annealing_data->amplitude);
@@ -186,10 +179,12 @@ namespace Simulation {
     }
 
     /**
-     *  One Monte Carlo step of updates of delta functions (ndelta number of moving attempt)
-     *  randomly move of one delta function for one single attempt
-     */
+      *  One Monte Carlo step of updates of delta functions (ndelta number of moving attempt)
+      *  randomly move of one delta function for one single attempt
+      */
     void SAC::update_deltas_1step_single() {
+        assert(this->annealing_data && this->grids && this->kernel);
+
         // helping params
         std::uniform_int_distribution<> rand_delta(0, this->annealing_data->ndelta-1);
         std::uniform_int_distribution<> rand_width(1, this->annealing_data->window_width);
@@ -254,10 +249,11 @@ namespace Simulation {
     }
 
     /**
-     *  One Monte Carlo step of updates of delta functions (ndelta/2 number of moving attempt)
-     *  randomly move of two delta functions for one single attempt
-     */
+      *  One Monte Carlo step of updates of delta functions (ndelta/2 number of moving attempt)
+      *  randomly move of two delta functions for one single attempt
+      */
     void SAC::update_deltas_1step_pair() {
+        assert(this->annealing_data && this->grids && this->kernel); 
         assert( this->annealing_data->ndelta >= 2 );
 
         // helping params
@@ -338,8 +334,8 @@ namespace Simulation {
         this->accept_radio = (double)accept_count / std::ceil(this->annealing_data->ndelta/2);
     }
 
-
     void SAC::update_fixed_theta() {
+        assert(this->measure && this->annealing_data && this->grids);
         // total steps in a fixe theta: nbin * sbin
         for ( int n = 0; n < this->measure->nbin; ++n) {
             // n corresponds to index of bins
@@ -371,19 +367,21 @@ namespace Simulation {
     }
 
     void SAC::write_log(int n) {
+        assert(this->measure && this->grids);
+        assert(this->annealing_chain && this->annealing_data);
         // n labels index of bin number
         // check if log file is empty
-        std::ifstream check_empty(this->log_name, std::ios::in|std::ios::app);
+        std::ifstream check_empty(this->log_file_path, std::ios::in|std::ios::app);
         if (!check_empty.is_open()) {
-            std::cerr << boost::format(" Fail to open file %s .\n") % this->log_name << std::endl;
+            std::cerr << boost::format(" Fail to open file %s .\n") % this->log_file_path << std::endl;
             exit(1);
         }
         bool is_empty = (check_empty.peek() == EOF);
         check_empty.close();
 
-        std::ofstream log_out(this->log_name, std::ios::out|std::ios::app);
+        std::ofstream log_out(this->log_file_path, std::ios::out|std::ios::app);
         if (!log_out.is_open()) {
-            std::cerr << boost::format(" Fail to open file %s .\n") % this->log_name << std::endl;
+            std::cerr << boost::format(" Fail to open file %s .\n") % this->log_file_path << std::endl;
             exit(1);
         }
         if (!is_empty) {
@@ -408,6 +406,8 @@ namespace Simulation {
     }
 
     void SAC::perform_annealing() {
+        assert(this->measure);
+        assert(this->annealing_chain && this->annealing_data);
         // annealing process, no more than `max_length` steps
         for (int i = 0; i < this->annealing_chain->max_length; ++i) {
             // updating
@@ -429,11 +429,12 @@ namespace Simulation {
     }
 
     void SAC::decide_sampling_theta() {
+        assert(this->annealing_chain && this->annealing_data);
         // decide sampling temperature by slightly increasing theta
         for (int i = this->annealing_chain->len()-1; i >= 0; --i) {
             // raise chi2 by a standard deviation with respect to the minimum
             if ( this->annealing_chain->chain[i].chi2 > this->chi2_min + 2.0 * sqrt(this->chi2_min) ) {
-                this->annealing_data = &this->annealing_chain->chain[i];
+                *this->annealing_data = this->annealing_chain->chain[i];
                 break;
             }
         }
@@ -446,6 +447,7 @@ namespace Simulation {
 
 
     void SAC::sample_and_collect() {
+        assert(this->grids && this->annealing_data);
         // equilibrate at current sampling temperature
         this->update_fixed_theta();
 
@@ -474,19 +476,17 @@ namespace Simulation {
         this->spec *=  this->scale_factor / (this->collecting_steps * this->grids->SpecInterval());
     }
 
-    void SAC::output(const std::string &filename) {
-        std::ofstream outfile(filename, std::ios::out|std::ios::trunc);
+    void SAC::output_recovered_spectrum() {
+        assert(this->grids);
+        std::ofstream outfile(this->spec_file_path, std::ios::out|std::ios::trunc);
         if (!outfile.is_open()) {
-            std::cerr << boost::format(" Fail to open file %s .\n") % filename << std::endl;
+            std::cerr << boost::format(" Fail to open file %s .\n") % this->spec_file_path << std::endl;
             exit(1);
         }
-        outfile << std::setiosflags(std::ios::right);
-            for (int i = 0; i < this->grids->SpecNum(); ++i) {
-                outfile << std::setw(10) << i
-                        << std::setw(15) << this->freq(i)
-                        << std::setw(15) << this->spec(i)
-                        << std::endl;
-            }
+        boost::format out_format("%| 15d|%| 20.8f|%| 20.8f|");
+        for (int i = 0; i < this->grids->SpecNum(); ++i) {
+            outfile << out_format % i % this->freq(i) % this->spec(i) << std::endl;
+        }
         outfile.close();
     }
 

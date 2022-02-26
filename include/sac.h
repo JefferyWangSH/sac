@@ -10,15 +10,16 @@
   *  which can be obtained previously by QMC calculations.
   */
 
+#include <memory>
 #define EIGEN_USE_MKL_ALL
 #define EIGEN_VECTORIZE_SSE4_2
 #include <Eigen/Core>
 
-namespace Grids { class FreqGrids; }
-namespace Kernel { class Kernel; }
-namespace Annealing { class AnnealingData; class AnnealingChain; }
-namespace DataReader { class QMCDataReader; }
-namespace Measure { class Measure; }
+#include "qmc_data_reader.h"
+#include "freq_grids.h"
+#include "kernel.h"
+#include "annealing_chain.h"
+#include "measure.h"
 
 
 namespace Simulation {
@@ -48,41 +49,41 @@ namespace Simulation {
         double chi2{};                      // chi2 (goodness of fitting) of current spectrum
         double chi2_min{};                  // minimum of chi2
 
-        std::string log_name{};             // log file name
+        std::string log_file_path{};        // path of logging out file
+        std::string spec_file_path{};       // path of spectrum out file
 
         /* griding params */
-        Grids::FreqGrids *grids{};
+        std::unique_ptr<Grids::FreqGrids> grids{};
 
         /* sampling params */
-        Annealing::AnnealingData *annealing_data{};
-        Annealing::AnnealingChain *annealing_chain{};
+        std::unique_ptr<Annealing::AnnealingData> annealing_data{};
+        std::unique_ptr<Annealing::AnnealingChain> annealing_chain{};
 
         /* kernel */
-        Kernel::Kernel *kernel{};
+        std::unique_ptr<Kernel::Kernel> kernel{};
 
         /* data from QMC input */
-        DataReader::QMCDataReader *qmc_data_reader{};
+        std::unique_ptr<DataReader::QMCDataReader> qmc_data_reader{};
 
         /* measuring module */
-        Measure::Measure *measure{};
+        std::unique_ptr<Measure::Measure> measure{};
 
     public:
-        /* construction and destruction */
-        SAC();
-        ~SAC();
+        /* construction function */
+        SAC() = default;
 
         /** subroutine for parameter settings */
         /* set up parameters for read in module */
-        void set_read_in_params(int lt, double beta, int nbin, int rebin_pace, int bootstrap_num);
+        void set_qmc_reader_params(int lt, double beta, int nbin, int rebin_pace, int bootstrap_num);
 
         /* set up file which contains data of tau points */
-        void set_filename_tau(const std::string &infile_tau);
+        void set_file_path_tau(const std::string &tau_file_path);
 
         /* set up file which contains data of time correlations */
-        void set_filename_corr(const std::string &infile_corr);
+        void set_file_path_corr(const std::string &corr_file_path);
 
-        /* set up file name of log output */
-        void set_filename_log(const std::string &outfile_log);
+        /* set up path of  output file, including output of logs and recovered spectrum */
+        void set_outfile_path(const std::string &log_file_path, const std::string &spec_file_path);
 
         /* set up parameters for grids of frequency domain */
         void set_griding_params(double freq_interval, double spec_interval, double freq_min, double freq_max);
@@ -90,8 +91,11 @@ namespace Simulation {
         /* set up parameters for sampling procedure */
         void set_sampling_params(int ndelta, double theta, int max_annealing_steps, int bin_num, int bin_size, int collecting_steps);
 
-        /* set up parameters controlling simulation modes */
-        void set_mode_params(const std::string &kernel_type, const std::string &update_type);
+        /* set up kernel type */
+        void set_kernel_type(const std::string &kernel_type);
+
+        /* set up updating type */
+        void set_update_type(const std::string &update_type);
 
         /* initialization */
         void init();
@@ -106,7 +110,7 @@ namespace Simulation {
         void sample_and_collect();
 
         /* file output of recovered spectrum */
-        void output(const std::string &filename);
+        void output_recovered_spectrum();
 
     private:
         /* read and preprocessing QMC data */
