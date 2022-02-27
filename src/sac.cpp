@@ -24,9 +24,10 @@ namespace Simulation {
         this->qmc_data_reader->read_corr_from_file(corr_file_path);
     }
 
-    void SAC::set_outfile_path(const std::string &log_file_path, const std::string &spec_file_path) {
+    void SAC::set_outfile_path(const std::string &log_file_path, const std::string &spec_file_path, const std::string &report_file_path) {
         this->log_file_path = log_file_path;
         this->spec_file_path = spec_file_path;
+        this->report_file_path = report_file_path;
     }
 
     void SAC::set_griding_params(double freq_interval, double spec_interval, double freq_min, double freq_max) {
@@ -382,7 +383,7 @@ namespace Simulation {
             exit(1);
         }
         if (!is_empty) {
-            boost::format log_format("%| 13d|%| 13d|%| 15.3e|%| 15.3e|%| 18.3e|%| 15.3e|%| 15.5f|%| 15.5e|");
+            boost::format log_format("%| 15d|%| 13d|%| 15.3e|%| 15.3e|%| 18.3e|%| 15.3e|%| 15.5f|%| 15.5e|");
             log_out << log_format % (this->annealing_chain->len()+1)
                                   % (n+1) 
                                   % this->annealing_data->theta
@@ -395,8 +396,8 @@ namespace Simulation {
         }
         else {
             // if empty, print header infomation
-            boost::format header_format("%| 13s|%| 13s|%| 15s|%| 15s|%| 18s|%| 15s|%| 15s|%| 15s|");
-            log_out << header_format % "AnnealStep" % "BinIndex" % "Theta" % "MinChi2/nt" % "AverageChi2/nt" 
+            boost::format header_format("%| 15s|%| 13s|%| 15s|%| 15s|%| 18s|%| 15s|%| 15s|%| 15s|");
+            log_out << header_format % "AnnealingStep" % "BinIndex" % "Theta" % "MinChi2/nt" % "AverageChi2/nt" 
                                      % "DeltaChi2" % "AcceptRadio" % "WindowWidth" << std::endl;
         }
         log_out.close();
@@ -483,6 +484,44 @@ namespace Simulation {
         boost::format out_format("%| 15d|%| 20.8f|%| 20.8f|");
         for (int i = 0; i < this->grids->SpecNum(); ++i) {
             outfile << out_format % i % this->freq(i) % this->spec(i) << std::endl;
+        }
+        outfile.close();
+    }
+
+    void SAC::report_recovery_quality() {
+        assert( this->grids );
+        assert( this->kernel );
+        assert( this->qmc_data_reader );
+        std::ofstream outfile(this->report_file_path, std::ios::out|std::ios::trunc);
+        if (!outfile.is_open()) {
+            std::cerr << boost::format(" Fail to open file %s .\n") % this->report_file_path << std::endl;
+            exit(1);
+        }
+
+        // extract kernel
+        Eigen::VectorXi locations(this->freq.size());
+        for (int i = 0; i < locations.size(); ++i) {
+            locations(i) = this->grids->Freq2FreqIndex(this->freq(i));
+        }
+        const Eigen::MatrixXd& tmp_kernel = this->kernel->kernel(Eigen::all, locations);
+        const Eigen::VectorXd& corr_from_sac = tmp_kernel * this->spec * this->grids->SpecInterval()/this->scale_factor;
+        const Eigen::VectorXd& diff = this->corr_from_qmc - corr_from_sac;
+
+        int size = this->qmc_data_reader->cov_mat_dim;
+        boost::format header_format("%| 18d|%| 18d|%| 18d|%| 22d|%| 18d|%| 18d|%| 18d|");
+        boost::format out_format("%| 18.8f|%| 18.8f|%| 18.8f|%| 22.8f|%| 18.8f|%| 18.8f|%| 18.8f|");
+        outfile << header_format % "CorrMeanQMC" % "CorrErrorQMC" % "CovEigenValue"
+                                 % "CorrQMC(DiagSpace)" % "CorrSAC" % "Diff" % "SigamSAC"
+                << std::endl;
+        for (int i = 0; i < size; ++i) {
+            outfile << out_format % this->qmc_data_reader->corr_mean_qmc(i)
+                                  % this->qmc_data_reader->corr_err_qmc(i)
+                                  % this->qmc_data_reader->cov_eig(i)
+                                  % this->corr_from_qmc(i)
+                                  % corr_from_sac(i)
+                                  % diff(i)
+                                  % this->sigma_from_qmc(i)
+                    << std::endl;
         }
         outfile.close();
     }

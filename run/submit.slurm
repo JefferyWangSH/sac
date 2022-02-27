@@ -22,6 +22,7 @@ tau_file_path="../input/"$folder_name"/tau.dat"
 corr_file_path="../input/"$folder_name"/cor.dat"
 log_file_path="../output/"$folder_name"/log.log"
 spec_file_path="../output/"$folder_name"/spec.dat"
+report_file_path="../output/"$folder_name"/report.dat"
 
 # check input files
 if [ ! -f $tau_file_path ]; then
@@ -50,7 +51,8 @@ error=$out_folder"/err.log"
 sbatch --job-name=$jobname --output=$output --partition=$partition \
 --nodes=$nodes --ntasks-per-node=$ntasks_per_node --cpus-per-task=$cpus_per_task --mem-per-cpu=$mem_per_cpu \
 --export=exe=$exe,kernel_type=$kernel_type,update_type=$update_type,\
-tau_file_path=$tau_file_path,corr_file_path=$corr_file_path,log_file_path=$log_file_path,spec_file_path=$spec_file_path,\
+tau_file_path=$tau_file_path,corr_file_path=$corr_file_path,\
+log_file_path=$log_file_path,spec_file_path=$spec_file_path,report_file_path=$report_file_path,\
 lt=$lt,beta=$beta,nbin_qmc=$nbin_qmc,theta=$theta ./run.sh
 
 exit 0

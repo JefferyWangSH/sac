@@ -51,6 +51,7 @@ namespace Simulation {
 
         std::string log_file_path{};        // path of logging out file
         std::string spec_file_path{};       // path of spectrum out file
+        std::string report_file_path{};     // path of quality report file
 
         /* griding params */
         std::unique_ptr<Grids::FreqGrids> grids{};
@@ -82,8 +83,8 @@ namespace Simulation {
         /* set up file which contains data of time correlations */
         void set_file_path_corr(const std::string &corr_file_path);
 
-        /* set up path of  output file, including output of logs and recovered spectrum */
-        void set_outfile_path(const std::string &log_file_path, const std::string &spec_file_path);
+        /* set up path of output file, including output of logs, recovered spectrum and quality report */
+        void set_outfile_path(const std::string &log_file_path, const std::string &spec_file_path, const std::string &report_file_path);
 
         /* set up parameters for grids of frequency domain */
         void set_griding_params(double freq_interval, double spec_interval, double freq_min, double freq_max);
@@ -111,6 +112,9 @@ namespace Simulation {
 
         /* file output of recovered spectrum */
         void output_recovered_spectrum();
+
+        /* output quality information about the recovered spectrum */
+        void report_recovery_quality();
 
     private:
         /* read and preprocessing QMC data */

@@ -18,7 +18,7 @@ namespace Kernel {
         // kernel for fermion greens function
         if ( kernel_type == "fermion" ) {
             for (int i = 0; i < grids.FreqNum(); ++i) {
-                const double freq = grids.FreqIndex2Freq(i);
+                double freq = grids.FreqIndex2Freq(i);
                 kernel.col(i) = (-freq*sac.tau_from_qmc.array()).exp() / (1.0 + exp(-sac.beta*freq));
             }
         }
@@ -26,7 +26,7 @@ namespace Kernel {
         // kernel for boson greens function
         if ( kernel_type == "boson" ) {
             for (int i = 0; i < grids.FreqNum(); ++i) {
-                const double freq = grids.FreqIndex2Freq(i);
+                double freq = grids.FreqIndex2Freq(i);
                 kernel.col(i) = ( (-freq*sac.tau_from_qmc.array()).exp() + (-freq*(sac.beta-sac.tau_from_qmc.array())).exp() ) / (1.0 + exp(-sac.beta*freq));
             }
         }

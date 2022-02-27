@@ -18,70 +18,6 @@
 #include "random.h"
 
 
-namespace Debug {
-    /**
-      * Subroutine to calculate fitting errors of correlations function after a SAC simulation was finished.
-      * The differences between recovered correlations and QMC measured correlations are calculated,
-      * which to some extent indicates the correctness of our accumulated spectrum.
-      *
-      * @param sac - SAC object which performed the SAC simulations
-      * @param spec_file - name of file which includes the recovered spectrum
-      * @retval None
-      */
-    void calculate_fitting_error(const Simulation::SAC &sac, const std::string &spec_file) {
-        // calculate fitting error of correlations
-        // first read spectrum information from file
-        std::vector<double> freq_vec;
-        std::vector<double> spec_vec;
-
-        std::ifstream infile;
-        infile.open(spec_file, std::ios::in);
-        if (!infile.is_open()) {
-            std::cerr << boost::format(" Fail to open file %s ! \n") % spec_file << std::endl;
-            exit(1);
-        }
-        std::string line;
-        std::vector<std::string> data;
-        getline(infile, line);
-        boost::split(data, line, boost::is_any_of(" "), boost::token_compress_on);
-        data.erase(std::remove(std::begin(data), std::end(data), ""), std::end(data));
-        while(getline(infile, line)) {
-            boost::split(data, line, boost::is_any_of(" "), boost::token_compress_on);
-            data.erase(std::remove(std::begin(data), std::end(data), ""), std::end(data));
-            freq_vec.push_back(boost::lexical_cast<double>(data[0]));
-            spec_vec.push_back(boost::lexical_cast<double>(data[1]));
-        }
-        infile.close();
-
-        // convert to eigen type
-        Eigen::VectorXd freq = Eigen::Map<Eigen::VectorXd>(freq_vec.data(), freq_vec.size());
-        Eigen::VectorXd spec = Eigen::Map<Eigen::VectorXd>(spec_vec.data(), spec_vec.size());
-
-        // generate kernel
-        Eigen::MatrixXd kernel(sac.nt, freq.size());
-        for (int t = 0; t < sac.nt; ++t) {
-            for (int f = 0; f < freq.size(); ++f) {
-                kernel(t, f) = exp(-freq[f]*sac.tau_from_qmc[t]) / (2*M_PI*(1+exp(-sac.beta*freq[f])));
-            }
-        }
-        // rotate and refactor
-        kernel = sac.qmc_data_reader->rotate_mat*kernel;
-        spec = spec/sac.scale_factor;
-
-        Eigen::VectorXd err = sac.grids->SpecInterval()*kernel*spec - sac.corr_from_qmc;
-        for (int i = 0; i < sac.qmc_data_reader->cov_mat_dim; ++i) {
-            std::cout << std::setiosflags(std::ios::right)
-                      << std::setw(15) << sac.qmc_data_reader->corr_mean_qmc[i]
-                      << std::setw(15) << sac.qmc_data_reader->corr_err_qmc[i]
-                      << std::setw(15) << sac.qmc_data_reader->cov_eig[i]
-                      << std::setw(15) << sac.corr_from_qmc[i]
-                      << std::setw(15) << err[i]
-                      << std::setw(15) << sac.sigma_from_qmc[i] << std::endl;
-        }
-    }
-} // namespace Debug
-
-
 /** The main program */
 int main(int argc, char *argv[]) {
 
@@ -109,6 +45,7 @@ int main(int argc, char *argv[]) {
     std::string corr_file_path = "../input/benchmark/cor.dat";
     std::string log_file_path = "../output/benchmark/log.log";
     std::string spec_file_path = "../output/benchmark/spec.dat";
+    std::string report_file_path = "../output/benchmark/report.dat";
 
     /** read params from command line */
     boost::program_options::options_description opts("Program options");
@@ -158,7 +95,9 @@ int main(int argc, char *argv[]) {
             ("log-file-path", boost::program_options::value<std::string>(&log_file_path)->default_value("../output/benchmark/log.dat"),
                     "output path of logging file during simualtion of SAC, default: ../output/benchmark/log.log")
             ("spec-file-path", boost::program_options::value<std::string>(&spec_file_path)->default_value("../output/benchmark/spec.dat"),
-                    "output path of recovered spectral functions, default: ../output/benchmark/spec.dat");      
+                    "output path of recovered spectral functions, default: ../output/benchmark/spec.dat")
+            ("report-file-path", boost::program_options::value<std::string>(&report_file_path)->default_value("../output/benchmark/report.dat"),
+                    "output path of the report of recovery quality, default: ../output/benchmark/report.dat");      
 
     try {
         boost::program_options::store(parse_command_line(argc, argv, opts), vm);
@@ -198,7 +137,7 @@ int main(int argc, char *argv[]) {
     sac->set_qmc_reader_params(lt, beta, nbin, rebin_pace, nboostrap);
     sac->set_file_path_tau(tau_file_path);
     sac->set_file_path_corr(corr_file_path);
-    sac->set_outfile_path(log_file_path, spec_file_path);
+    sac->set_outfile_path(log_file_path, spec_file_path, report_file_path);
     sac->set_griding_params(grid_interval, spec_interval, omega_min, omega_max);
     sac->set_sampling_params(ndelta, theta, max_annealing_steps, bin_num, bin_size, collecting_steps);
     sac->set_kernel_type(kernel_type);
@@ -206,16 +145,6 @@ int main(int argc, char *argv[]) {
 
     // initialization
     sac->init();
-
-    // // output initialization results
-    // for (int i = 0; i < sac->qmc_data_reader->cov_mat_dim; ++i) {
-    //     std::cout << std::setiosflags(std::ios::right)
-    //               << std::setw(15) << sac->qmc_data_reader->corr_mean[i]
-    //               << std::setw(15) << sac->qmc_data_reader->corr_err[i]
-    //               << std::setw(15) << sac->qmc_data_reader->cov_eig[i]
-    //               << std::setw(15) << sac->corr[i]
-    //               << std::setw(15) << sac->sigma[i] << std::endl;
-    // }
 
     end_t = std::chrono::steady_clock::now();
     duration = (double)std::chrono::duration_cast<std::chrono::milliseconds>(end_t-begin_t).count()/1000;
@@ -233,6 +162,7 @@ int main(int argc, char *argv[]) {
     std::cout << fmt_param_int % "Number of bins `nbin`" % joiner % sac->measure->nbin << std::endl;
     std::cout << fmt_param_range % "Range of spectrum `omega`" % joiner % sac->grids->FreqIndex2Freq(0) % sac->grids->FreqIndex2Freq(sac->grids->FreqNum()-1) << std::endl;
     std::cout << "\n Annealing process ... \n " << std::endl;
+    std::cout << boost::format(" Log information of annealing written into %s ... \n") % sac->log_file_path << std::endl;
 
     // annealing process
     sac->perform_annealing();
@@ -257,10 +187,11 @@ int main(int argc, char *argv[]) {
 
     end_t = std::chrono::steady_clock::now();
     duration = (double)std::chrono::duration_cast<std::chrono::milliseconds>(end_t-begin_t).count()/1000;
-    std::cout << boost::format(" Accumulated spectrum has been stored into %s , costing %.2f s. \n") % sac->spec_file_path % duration << std::endl;
+    std::cout << boost::format(" Accumulated spectrum stored in %s , costing %.2f s. \n") % sac->spec_file_path % duration << std::endl;
 
-    // output the fitting error
-    Debug::calculate_fitting_error(*sac, sac->spec_file_path);
+    // output report of recovery quality
+    sac->report_recovery_quality();
+    std::cout << boost::format(" Quality report of recovered spectrum stored in %s . \n") % sac->report_file_path << std::endl;
 
     delete sac;
     return 0;
