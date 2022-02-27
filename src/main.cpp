@@ -99,7 +99,7 @@ int main(int argc, char *argv[]) {
     int ndelta = 1e3;
     double theta = 1e6;
     int max_annealing_steps = 5e3;
-    int bin_size = 4e3;
+    int bin_size = 5e3;
     int bin_num = 5;
     int collecting_steps = 1e5;
 
@@ -117,19 +117,20 @@ int main(int argc, char *argv[]) {
     opts.add_options()
             ("help,h", "display this information")
             ("lt", boost::program_options::value<int>(&lt)->default_value(100),
-                    "number of time points of input QMC correlations, default: 100")
+                    "number of imgainary-time grids of input QMC correlations, default: 100")
             ("beta", boost::program_options::value<double>(&beta)->default_value(4.0),
                     "inverse temperature of QMC, default: 4.0")
             ("nbin-qmc", boost::program_options::value<int>(&nbin)->default_value(1e3),
-                    "total number of bins in QMC measurements, default: 1e3")
+                    "number of measuring bins in QMC measurements, default: 1e3")
             ("rebin-pace", boost::program_options::value<int>(&rebin_pace)->default_value(1),
                     "pace of rebin, default: 1")
             ("nboostrap", boost::program_options::value<int>(&nboostrap)->default_value(5e3),
-                    "number of bootstrap samples for analysing QMC data, default: 5e3")
+                    "number of bootstrap samples for the preprocessing of input QMC data, default: 5e3")
             ("grid-interval", boost::program_options::value<double>(&grid_interval)->default_value(1e-5),
-                    "minimum interval of fine frequency grids in sampling space, default: 1e-5")
+                    "minimum interval of fine frequency grids in the sampling space of delta functions, default: 1e-5")
             ("spec-interval", boost::program_options::value<double>(&spec_interval)->default_value(1e-2),
-                    "minimum interval of frequency grids in accumulated spectrum, default: 1e-2")
+                    "minimum interval of frequency grids in accumulated spectral function \
+                    (should be larger than the intervl of grids), default: 1e-2")
             ("freq-min", boost::program_options::value<double>(&omega_min)->default_value(-10.0),
                     "lower bound of frequency domain, default: -10.0")
             ("freq-max", boost::program_options::value<double>(&omega_max)->default_value(+10.0),
@@ -140,20 +141,20 @@ int main(int argc, char *argv[]) {
                     "initial sampling temperature, default: 1e6")
             ("max-anneal-steps", boost::program_options::value<int>(&max_annealing_steps)->default_value(5e3),
                     "maximum MC steps for simulated annealing precess, default: 5e3")
-            ("sbin", boost::program_options::value<int>(&bin_size)->default_value(4e3),
-                    "number of bootstrap samples within one bin, default: 4e3")
-            ("nbin-sac", boost::program_options::value<int>(&bin_num)->default_value(5),
-                    "total number of bins for SAC measurements, default: 5")
-            ("collect-steps", boost::program_options::value<int>(&collecting_steps)->default_value(1e5),
+            ("max-collecting-steps", boost::program_options::value<int>(&collecting_steps)->default_value(1e5),
                     "maximum MC steps for spectrum collecting precess, default: 1e5")
+            ("sbin", boost::program_options::value<int>(&bin_size)->default_value(5e3),
+                    "number of bootstrap samples within one bin, default: 5e3")
+            ("nbin-sac", boost::program_options::value<int>(&bin_num)->default_value(5),
+                    "number of measuring bins for SAC measurements, default: 5")
             ("kernel-type", boost::program_options::value<std::string>(&kernel_type)->default_value("fermion"),
-                    "type of kernel relating correlation function with spectral function, default: fermion")
+                    "kernel type which relates QMC correlations with spectral function, default: fermion")
             ("update-type", boost::program_options::value<std::string>(&update_type)->default_value("single"),
                     "updating type of MC updates in SAC simulation, default: single")
             ("tau-file-path", boost::program_options::value<std::string>(&tau_file_path)->default_value("../input/benchmark/tau.dat"),
-                    "path of input file containing imaginary-time grids, default: ../input/benchmark/tau.dat")
+                    "path of input file containing imaginary-time grids from QMC, default: ../input/benchmark/tau.dat")
             ("corr-file-path", boost::program_options::value<std::string>(&corr_file_path)->default_value("../input/benchmark/cor.dat"),
-                    "path of input file containing correlation functions measured from QMC, default: ../input/benchmark/cor.dat")
+                    "path of input file containing correlation functions measured by QMC, default: ../input/benchmark/cor.dat")
             ("log-file-path", boost::program_options::value<std::string>(&log_file_path)->default_value("../output/benchmark/log.dat"),
                     "output path of logging file during simualtion of SAC, default: ../output/benchmark/log.log")
             ("spec-file-path", boost::program_options::value<std::string>(&spec_file_path)->default_value("../output/benchmark/spec.dat"),
