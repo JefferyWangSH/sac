@@ -1,125 +1,146 @@
-# Stochastic Analytic Continuation [![forthebadge](https://forthebadge.com/images/badges/works-on-my-machine.svg)](https://forthebadge.com)
+# Stochastic Analytic Continuation
+![workflow](https://github.com/JefferyWangSH/sac/actions/workflows/main.yml/badge.svg?branch=master)
+![commit](https://img.shields.io/github/last-commit/JefferyWangSH/sac/master?color=blue)
 
-
-A primary C++ implementation of Stochastic Analytic Continuation method `(SAC)`,
+A general C++ implementation of Stochastic Analytic Continuation method `(SAC)`,
 proposed by Anders W. Sandvik, is presented in this repository. 
 
-The program aims to extract information of fermion spectrum functions from imaginary-time quantum Monte Carlo `(QMC)` data. 
-More details about the `SAC` algorithm can be found in [References](#references) section. 
+The program aims to extract information of fermion spectral functions from imaginary-time correlations calculated by quantum Monte Carlo `(QMC)` simulations. 
+Details about the `SAC` algorithm can be found in [References](#references) section. 
 
 ---
 
 ## Installation ##
 
 ### Prerequisite ###
-* `gcc/g++` `( version > 4.8.5 )` and `cmake` `( version > 2.8.12 )` installed.
-* `Boost C++ libraries` `( version > 1.71 )` installed.
-* `Eigen library` `( version > 3.3.9 )` providing a user-friendly interface of matrices.
+* `gcc/g++` `( version >= 7.1, support C++17 standard )` and `cmake` `( version >= 3.21 )` installed.
+* `Boost C++ libraries` `( version >= 1.71 )` installed.
+* `Eigen library` `( version >= 3.3.9 )` providing a user-friendly interface of matrices.
 * `Intel Math Kernel Library (MKL)` for high-accuracy linear algebra, alse working as the backend of `Eigen`.
-* `Intel implementation of Message Passing Interface (Intel MPI) (optional)` for large range of distributed parallel.
 
 ### Usage ###
 1. Download source codes from github:
     ``` shell
     $ # download the source code
-    $ git clone https://github.com/JefferyWangSH/SAC.git {PROGRAM_ROOT}
+    $ git clone https://github.com/JefferyWangSH/sac.git {program_root}
     ```
 
-2. Enter directory [`build/`](build/) and and run [`runcmake.sh`](build/runcmake.sh) for the analysis of program using cmake.
+2. Enter directory [`build`](build/) and run [`runcmake.sh`](build/runcmake.sh) for the analysis of program using cmake.
     ``` shell
-    $ # initialize cmake
-    $ cd {PROGRAM_ROOT}/build && ./runcmake.sh
+    $ # config cmake
+    $ cd {program_root}/build && sh runcmake.sh
     ```
     
-3. Enter the [`run/`](run/) directory and compile the codes. 
+3. Enter the [`run`](run/) directory and compile the codes. 
     ``` shell
     $ # build the program
-    $ cd {PROGRAM_ROOT}/run && ./make.sh
+    $ cd {program_root}/run && sh make.sh
     ```
 
-4. We use `slurm` for task management, and some sample scripts for program running are presented in [`batch.sh`](run/batch.sh) and [`run.sh`](run/run.sh). Of course, one can also run the code directly from the command line.
+4. 
+   We use `slurm` for task management, and some sample scripts for program running are presented in [`submit.slurm`](run/submit.slurm) and [`run.sh`](run/run.sh). One can also run the code directly from the command line.
    ```shell
    $ # run the program using slurm
-   $ cd {PROGRAM_ROOT}/run
-   $ ./batch.sh
-   $ # edit simulating parameters in run.sh
-   $ vim run.sh
+   $ cd {program_root}/run
+   $ # edit simulating parameters before running the code 
+   $ vim submit.slurm
+   $ sh submit.slurm
    
    $ # run directly from command line
    $ # using program option `--help` to see optional params and helping messages.
-   $ cd {PROGRAM_ROOT}/build
-   $ ./sac  --help --input-folder-name {INPUT_FOLDER_NAME}
+   $ {program_root}/build/sac  --help
    ``` 
 
-5. To organize the input QMC data and make them detectable for the program, one should create a customized input folder and put it under the [`input/`](input/) directory. 
+5. 
+   To make the input QMC data detectable for the program, one should pass the path of the input corrlation function and the corresponding imaginary-time grids through command line options. 
    
-   The input should include at least two files named `tau.dat` and `cor.dat`, which contains the time sequence and correlation functions respectively.
-   Some examples can be found in [`input/benchmark/`](input/benchmark/) to show the format of input. 
+   It is recommanded that all these input files should be put in certain user customized input folder, say "benchmark", under the [`input/`](input/) directory. 
+   An example of the input format can be found in [`input/benchmark`](input/benchmark/), and the corresponding format of options are shown below.
+    ```shell
+    $ # specify paths of input and output files
+    $ {program_root}/build/sac --tau-file-path=${tau_file_path}   \
+                               --corr-file-path=${corr_file_path} \
+                               --log-file-path=${log_file_path}   \
+                               --spec-file-path=${spec_file_path} \
+                               --report-file-path=${report_file_path}
+    ```
 
-6. During the simulating process, an output folder, with the same name as the original input, will be created under the [`results/`](results/) directory, and after the simulation is finished, results of recovered spectrum will be automatically generated there.
+6. 
+   During the simulation, the progress rate of annealing can be checked in the output log file, which is assigned through option `--log-file-path`.
+   And after the simulation is finished, results of the recovered spectrum `(--spec-file-path)`, together with a quality report of the recovery`(--report-file-path)`, will be automatically generated.
    ```shell
-   $ cd {PROGRAM_ROOT}/results/{INPUT_FOLDER_NAME}
+   $ # by default, the output files would be under output/benchmark unless explicitly assigned
+   $ cd {program_root}/output/benchmark
    
    $ # monitor the process of annealing in log.log
    $ vim log.log
+
+   $ # if someone runs the program using slurm, the screen output will get stored in out.log
+   $ vim out.log
    
-   $ # if someone runs the program using slurm, the screen output will get stored in out.out
-   $ vim out.out
-   
-   $ # recovered spectrum
+   $ # recovered spectral function
    $ vim spec.dat
+
+   $ # quality report of recovered spectrum to quantify the goodness of the SAC recovery
+   $ vim report.dat
    ```
 
 
 ## Repository Structure ##
-* [`include/`](include) & [`src/`](src) - header file declarations and source codes 
-  * [`SAC.h`](include/SAC.h)/[`SAC.cpp`](src/SAC.cpp) 
-    \- main class for SAC calculations, implementing MC sampling, simulated annealing, and spectrum recovery
-  * [`ReadInModule.h`](include/ReadInModule.h)/[`ReadInModule.cpp`](src/ReadInModule.cpp)
-    \- interface module for analysis and pretreatments of input QMC data
-  * [`FrequencyGrid.h`](include/FrequencyGrid.h)/[`FrequencyGrid.cpp`](src/FrequencyGrid.cpp)
-    \- helping class for the division of grids in frequency domain, both grids for MC sampling and spectrum collection are supported
-  * [`Kernel.h`](include/Kernel.h)/[`Kernel.cpp`](src/Kernel.cpp)
-    \- integral kernels connecting spectrum function to QMC correlations
-  * [`AnnealChain.h`](include/AnnealChain.h)/[`AnnealChain.cpp`](src/AnnealChain.cpp)
-    \- structure and class to store simulating information during the SAC annealing process
-  * [`Measure.h`](include/Measure.h)/[`Measure.cpp`](src/Measure.cpp)
-    \- class for the measurements of average fitting goodness and accepting radio
-  * [`Random.h`](include/Random.h)/[`Random.cpp`](src/Random.cpp)
-    \- random module for the Monte Carlo process
-  * [`MatrixUtil.hpp`](src/MatrixUtil.hpp) 
-    \- C++ and Eigen style interface file for high-efficiency matrix diagonalization, using MKL LAPACK as backend
+* [`include`](include) & [`src`](src) - header files and source codes 
+  * [`sac.h`](include/sac.h)/[`sac.cpp`](src/sac.cpp) 
+    \- main class for SAC calculations, implementing MC sampling, simulated annealing, and the recovery of spectrum
+  * [`qmc_data_reader.h`](include/qmc_data_reader.h)/[`qmc_data_reader.cpp`](src/qmc_data_reader.cpp)
+    \- interface module for analysing and preprocessing the input correlation functions from QMC
+  * [`freq_grids.h`](include/freq_grids.h)/[`freq_grids.cpp`](src/freq_grids.cpp)
+    \- class for the discretization of grids in frequency domain
+  * [`kernel.h`](include/kernel.h)/[`kernel.cpp`](src/kernel.cpp)
+    \- integral kernels which connects spectral function and QMC correlations
+  * [`annealing_chain.h`](include/annealing_chain.h)/[`annealing_chain.cpp`](src/annealing_chain.cpp)
+    \- chain structure for the storage of metadata during the SAC annealing process
+  * [`measure.h`](include/measure.h)/[`measure.cpp`](src/measure.cpp)
+    \- class for the measurements of averaged fitting goodness and accepting radio
+  * [`random.h`](include/random.h)/[`random.cpp`](src/random.cpp)
+    \- independent random module for the Monte Carlo process
+  * [`matrix_util.hpp`](src/matrix_util.hpp) 
+    \- Eigen-style C++ interface for high-efficiency matrix diagonalization, using MKL LAPACK as backend
   * [`main.cpp`](src/main.cpp) 
     \- the main program
-* [`input/`](input) - input files for SAC simulations
-  * [`benchmark/`](input/benchmark) - benchmark input for the correctness testing of codes
+* [`input`](input) - input of SAC simulations
+  * [`benchmark`](input/benchmark) - example input for benchmark
       * [`tau.dat`](input/benchmark/tau.dat) 
-        \- sequence of imaginary time points
+        \- imaginary-time grids of input correlation functions
       * [`cor.dat`](input/benchmark/cor.dat) 
-        \- synthetic correlation functions with Gaussian noise introduced
-      * [`spec_base.dat`](input/benchmark/spec_base.dat)
-        \- standard spectral function to be benchmarked
-* [`results/`](results) - simulation results
-  * [`benchmark/`](results/benchmark) - results of benchmark calculation
-    * [`out.out`](results/benchmark/out.out)
-      \- file records of the screen output when running the code using slurm 
-    * [`log.log`](results/benchmark/log.log) 
+        \- correlation functions measured by QMC
+* [`output`](output) - simulation outputs
+  * [`benchmark`](output/benchmark) - results of benchmark calculations
+    * [`out.log`](output/benchmark/out.log)
+      \- file records of the standard screen output when running code with slurm 
+    * [`log.log`](output/benchmark/log.log) 
       \- log file generated during the simulated annealing process of SAC. 
-      Sampling temperature, fitting goodness and average accepting radio are recorded for tracking of annealing and equilibrium.
-    * [`spec.dat`](results/benchmark/spec.dat) 
-      \- spectrum data generated by SAC
-    * [`benchmark.pdf`](results/benchmark/benchmark.pdf) - figure of test spectrum
-  * [`script.py`](results/script.py)
-      \- python script to plot the recovered spectrum
-* [`build/`](build) - building directory
-  * [`runcmake.sh`](build/runcmake.sh)- bash script for cmake building 
-* [`run/`](run) - running directory
-  * [`make.sh`](run/make.sh) - bash script for program building
+      Sampling temperature, fitting goodness and average accepting radio are recorded for the tracking of annealing and equilibrium.
+    * [`spec.dat`](output/benchmark/spec.dat) 
+      \- data of accumulated spectral functions recovered by SAC
+    * [`report.dat`](output/benchmark/report.dat)
+      \- quality report of recovered spectral functions, compared with input data
+* [`build`](build) - building directory
+  * [`runcmake.sh`](build/runcmake.sh)- bash script for the configuration of cmake
+* [`run`](run) - running directory
+  * [`make.sh`](run/make.sh) - bash script for the compilation of the project
   * [`run.sh`](run/run.sh) 
-    \- bash script for program running with customized program options
-  * [`batch.sh`](run/batch.sh) 
-    \- sbatch script for upload program tasks using slurm
-* [`references/`](references) - references and some reading materials about SAC algorithms
+    \- bash script for the running of project with customized program options
+  * [`submit.slurm`](run/submit.slurm) 
+    \- sbatch script for the submittment of program tasks using slurm
+* [`script`](script) - python scripts 
+  * [`generate_data.py`](script/generate_data.py)
+    \- generation of synthetic spectral functions and biased correlation functions for benchmark use
+  * [`plot_benchmark.py`](script/plot_benchmark.py)
+    \- visualization of benchmark results
+  * [`data/exact_spec.dat`](script/data/exact_spec.dat)
+    \- synthetic spectral functions
+  * [`figure/benchmark.pdf`](script/figure/benchmark.pdf)
+    \- benchmark figure
+* [`cmake`](cmake) - FindXXX.cmake files for cross-platform compilation
 
 
 ## References ##
