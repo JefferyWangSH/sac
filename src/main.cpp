@@ -25,12 +25,12 @@ int main(int argc, char *argv[]) {
     double beta = 4.0;
     int nbin = 1e3;
     int rebin_pace = 1;
-    int nboostrap = 5e3;
+    int nbootstrap = 5e3;
 
-    double grid_interval = 1e-5;
+    double freq_interval = 1e-5;
     double spec_interval = 1e-2;
-    double omega_min = -10.0;
-    double omega_max = 10.0;
+    double freq_min = -10.0;
+    double freq_max = 10.0;
 
     int ndelta = 1e3;
     double theta = 1e6;
@@ -38,6 +38,8 @@ int main(int argc, char *argv[]) {
     int bin_size = 5e3;
     int bin_num = 5;
     int collecting_steps = 1e5;
+    int stablization_pace = 10;
+    double annealing_pace = 0.90;
 
     std::string kernel_type = "fermion";
     std::string update_type = "single";
@@ -61,27 +63,31 @@ int main(int argc, char *argv[]) {
                     "number of measuring bins in QMC measurements, default: 1e3")
             ("rebin-pace", boost::program_options::value<int>(&rebin_pace)->default_value(1),
                     "pace of rebin, default: 1")
-            ("nboostrap", boost::program_options::value<int>(&nboostrap)->default_value(5e3),
+            ("nbootstrap", boost::program_options::value<int>(&nbootstrap)->default_value(5e3),
                     "number of bootstrap samples for the preprocessing of input QMC data, default: 5e3")
-            ("grid-interval", boost::program_options::value<double>(&grid_interval)->default_value(1e-5),
+            ("freq-interval", boost::program_options::value<double>(&freq_interval)->default_value(1e-5),
                     "minimum interval of fine frequency grids in the sampling space of delta functions, default: 1e-5")
             ("spec-interval", boost::program_options::value<double>(&spec_interval)->default_value(1e-2),
                     "minimum interval of frequency grids in accumulated spectral function \
                     (should be larger than the intervl of grids), default: 1e-2")
-            ("freq-min", boost::program_options::value<double>(&omega_min)->default_value(-10.0),
+            ("freq-min", boost::program_options::value<double>(&freq_min)->default_value(-10.0),
                     "lower bound of frequency domain, default: -10.0")
-            ("freq-max", boost::program_options::value<double>(&omega_max)->default_value(+10.0),
+            ("freq-max", boost::program_options::value<double>(&freq_max)->default_value(+10.0),
                     "upper bound of frequency domain, default: 10.0")
             ("ndelta", boost::program_options::value<int>(&ndelta)->default_value(1e3),
                     "number of delta functions, default: 1e3")
             ("theta", boost::program_options::value<double>(&theta)->default_value(1e6),
                     "initial sampling temperature, default: 1e6")
+            ("annealing-pace", boost::program_options::value<double>(&annealing_pace)->default_value(0.90),
+                    "rate of the temperature drop during annealing (the closer to 1.0, the slower the decline), default: 0.90")
+            ("stablization-pace", boost::program_options::value<int>(&stablization_pace)->default_value(10),
+                    "pace of the recomputation of chi2 directly from locations of all delta functions, default: 10")
             ("max-anneal-steps", boost::program_options::value<int>(&max_annealing_steps)->default_value(5e3),
-                    "maximum MC steps for simulated annealing precess, default: 5e3")
-            ("max-collecting-steps", boost::program_options::value<int>(&collecting_steps)->default_value(1e5),
-                    "maximum MC steps for spectrum collecting precess, default: 1e5")
-            ("sbin", boost::program_options::value<int>(&bin_size)->default_value(5e3),
-                    "number of bootstrap samples within one bin, default: 5e3")
+                    "maximum annealing steps for simulated annealing precess, default: 5e3")
+            ("collecting-steps", boost::program_options::value<int>(&collecting_steps)->default_value(1e5),
+                    "total MC steps for spectrum collecting precess, default: 1e5")
+            ("sbin-sac", boost::program_options::value<int>(&bin_size)->default_value(5e3),
+                    "number of MC samples in one bin for SAC measurements of chi2, default: 5e3")
             ("nbin-sac", boost::program_options::value<int>(&bin_num)->default_value(5),
                     "number of measuring bins for SAC measurements, default: 5")
             ("kernel-type", boost::program_options::value<std::string>(&kernel_type)->default_value("fermion"),
@@ -116,7 +122,20 @@ int main(int argc, char *argv[]) {
 
     // time record
     std::chrono::steady_clock::time_point begin_t{}, end_t{};
-    double duration;
+    double seconds{};
+
+    // lambda function for time output
+    auto StandardTimeOutput = [](double seconds) {
+        auto day = std::floor(seconds/86400);
+        auto hour = std::floor((seconds - day * 86400) / 3600);
+        auto minute = std::floor((seconds - day * 86400 - hour * 3600) / 60);
+        auto sec = seconds - 86400 * day - 3600 * hour - 60 * minute;
+        if ( day ) { return boost::format("%d d %d h %d m %.2f s") % day % hour % minute % sec; }
+        else if ( hour ) { return boost::format("%d h %d m %.2f s") % hour % minute % sec; }
+        else if ( minute ) { return boost::format("%d m %.2f s") % minute % sec; }
+        else { return boost::format("%.2f s") % sec; }
+    };
+
 
     /** SAC simulations */
     Simulation::SAC *sac = new Simulation::SAC();
@@ -131,15 +150,16 @@ int main(int argc, char *argv[]) {
     std::cout << boost::format(" Current time : %s \n") % current_time << std::endl;
 
     begin_t = std::chrono::steady_clock::now();
-    std::cout << " Initialization starts. \n" << std::endl;
+    std::cout << " Initialization starts. ( Preprocessing of input QMC correlations ) \n" << std::endl;
 
     // set up simulating params
-    sac->set_qmc_reader_params(lt, beta, nbin, rebin_pace, nboostrap);
+    sac->set_qmc_reader_params(lt, beta, nbin, rebin_pace, nbootstrap);
     sac->set_file_path_tau(tau_file_path);
     sac->set_file_path_corr(corr_file_path);
     sac->set_outfile_path(log_file_path, spec_file_path, report_file_path);
-    sac->set_griding_params(grid_interval, spec_interval, omega_min, omega_max);
-    sac->set_sampling_params(ndelta, theta, max_annealing_steps, bin_num, bin_size, collecting_steps);
+    sac->set_griding_params(freq_interval, spec_interval, freq_min, freq_max);
+    sac->set_annealing_params(theta, max_annealing_steps, annealing_pace);
+    sac->set_sampling_params(ndelta, bin_num, bin_size, collecting_steps, stablization_pace);
     sac->set_kernel_type(kernel_type);
     sac->set_update_type(update_type);
 
@@ -147,21 +167,43 @@ int main(int argc, char *argv[]) {
     sac->init();
 
     end_t = std::chrono::steady_clock::now();
-    duration = (double)std::chrono::duration_cast<std::chrono::milliseconds>(end_t-begin_t).count()/1000;
-    std::cout << boost::format(" Initialization finished in %.2f s. \n") % duration << std::endl;
+    seconds = (double)std::chrono::duration_cast<std::chrono::milliseconds>(end_t-begin_t).count()/1000;
+    std::cout << boost::format(" Initialization finished in %s. \n") % StandardTimeOutput(seconds) << std::endl;
 
     begin_t = std::chrono::steady_clock::now();
-    boost::format fmt_param_int("%| 35s|%| 5s|%| 18d|");
-    boost::format fmt_param_double("%| 35s|%| 5s|%| 18.3e|");
-    boost::format fmt_param_range("%| 35s|%| 5s|%| 10.3f|,%| 7.3f|");
+    boost::format fmt_param_str("%| 42s|%| 5s|%| 18s|");
+    boost::format fmt_param_int("%| 42s|%| 5s|%| 18d|");
+    boost::format fmt_param_double("%| 42s|%| 5s|%| 18.3f|");
+    boost::format fmt_param_science("%| 42s|%| 5s|%| 18.3e|");
+    boost::format fmt_param_range("%| 42s|%| 5s|%| 10.3f|,%| 7.3f|");
     const std::string& joiner = "->";
-    std::cout << " Annealing starts with following parameters :\n" << std::endl;
-    std::cout << fmt_param_int % "Number of tau points `nt`" % joiner % sac->nt << std::endl;
-    std::cout << fmt_param_double % "Sampling temperature `theta`" % joiner % sac->annealing_data->theta << std::endl;
-    std::cout << fmt_param_int % "Number of MC sweep `nsweep`" % joiner % sac->measure->size_of_bin << std::endl;
-    std::cout << fmt_param_int % "Number of bins `nbin`" % joiner % sac->measure->nbin << std::endl;
-    std::cout << fmt_param_range % "Range of spectrum `omega`" % joiner % sac->grids->FreqIndex2Freq(0) % sac->grids->FreqIndex2Freq(sac->grids->FreqNum()-1) << std::endl;
-    std::cout << "\n Annealing process ... \n " << std::endl;
+    std::cout << " Annealing starts with the following parameters :\n" << std::endl;
+
+    std::cout << fmt_param_int % "Number of tau points in QMC 'lt'" % joiner % sac->qmc_data_reader->lt << std::endl;
+    std::cout << fmt_param_double % "Inverse temperature in QMC 'beta'" % joiner % sac->qmc_data_reader->beta << std::endl;
+    std::cout << fmt_param_int % "Number of bins in QMC 'nbin-qmc'" % joiner % sac->qmc_data_reader->nbin_total << std::endl;
+    std::cout << fmt_param_int % "Rebin pace of QMC bin data 'rebin_pace'" % joiner % sac->qmc_data_reader->rebin_pace << std::endl;
+    std::cout << fmt_param_int % "Number of bootstrap samples 'nbootstrap'" % joiner % sac->qmc_data_reader->bootstrap_num << std::endl << std::endl;
+    
+    std::cout << fmt_param_str % "Type of kernel 'kernel_type'" % joiner % sac->kernel_type << std::endl;
+    std::cout << fmt_param_str % "Type of MC updates 'update_type'" % joiner % sac->update_type << std::endl << std::endl;
+    
+    std::cout << fmt_param_int % "Number of tau points (truncated) 'nt'" % joiner % sac->nt << std::endl;
+    std::cout << fmt_param_science % "Initial sampling temperature 'theta'" % joiner % sac->annealing_data->theta << std::endl;
+    std::cout << fmt_param_double % "Annealing rate 'annealing_pace'" % joiner % sac->annealing_pace << std::endl;
+    std::cout << fmt_param_double % "Stablization rate 'stablization_pace'" % joiner % sac->stablization_pace << std::endl;
+    std::cout << fmt_param_int % "Number of delta functions 'ndelta'" % joiner % sac->annealing_data->ndelta << std::endl;
+    std::cout << fmt_param_int % "Number of meausring bins 'nbin-sac'" % joiner % sac->measure->nbin << std::endl;
+    std::cout << fmt_param_int % "Capacity of a measuring bin 'sbin-sac'" % joiner % sac->measure->size_of_bin << std::endl;
+    std::cout << fmt_param_int % "Number of spec samples 'collecting_steps'" % joiner % sac->collecting_steps << std::endl << std::endl;
+    
+    std::cout << fmt_param_science % "Interval of fine grids 'freq_interval'" % joiner % sac->grids->FreqInterval() << std::endl;
+    std::cout << fmt_param_science % "Interval of spectrum 'spec_interval'" % joiner % sac->grids->SpecInterval() << std::endl;
+    std::cout << fmt_param_range % "Frequency range of spectrum 'freq'" % joiner 
+                                 % sac->grids->FreqIndex2Freq(0) % sac->grids->FreqIndex2Freq(sac->grids->FreqNum()-1) 
+              << std::endl;
+
+    std::cout << "\n Annealing process ... \n" << std::endl;
     std::cout << boost::format(" Log information of annealing written into %s ... \n") % sac->log_file_path << std::endl;
 
     // annealing process
@@ -171,10 +213,9 @@ int main(int argc, char *argv[]) {
     sac->decide_sampling_theta();
 
     end_t = std::chrono::steady_clock::now();
-    duration = (double)std::chrono::duration_cast<std::chrono::milliseconds>(end_t-begin_t).count()/1000;
-    auto minute = std::floor(duration/60);
-    auto sec = duration - 60 * minute;
-    std::cout << boost::format(" Annealing finished in %d min %.2f s. \n") % minute % sec << std::endl;
+    seconds = (double)std::chrono::duration_cast<std::chrono::milliseconds>(end_t-begin_t).count()/1000;
+
+    std::cout << boost::format(" Annealing finished in %s. \n") % StandardTimeOutput(seconds) << std::endl;
 
     begin_t = std::chrono::steady_clock::now();
     std::cout << " Start collecting spectrum ... \n" << std::endl;
@@ -186,8 +227,8 @@ int main(int argc, char *argv[]) {
     sac->output_recovered_spectrum();
 
     end_t = std::chrono::steady_clock::now();
-    duration = (double)std::chrono::duration_cast<std::chrono::milliseconds>(end_t-begin_t).count()/1000;
-    std::cout << boost::format(" Accumulated spectrum stored in %s , costing %.2f s. \n") % sac->spec_file_path % duration << std::endl;
+    seconds = (double)std::chrono::duration_cast<std::chrono::milliseconds>(end_t-begin_t).count()/1000;
+    std::cout << boost::format(" Accumulated spectrum stored in %s , costing %s. \n") % sac->spec_file_path % StandardTimeOutput(seconds) << std::endl;
 
     // output report of recovery quality
     sac->report_recovery_quality();

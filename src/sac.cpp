@@ -35,17 +35,25 @@ namespace Simulation {
         this->grids = std::make_unique<Grids::FreqGrids>(freq_interval, spec_interval, freq_min, freq_max);
     }
 
-    void SAC::set_sampling_params(int ndelta, double theta, int max_annealing_steps, int bin_num, int bin_size, int collecting_steps) {
-        if (this->annealing_data) { this->annealing_data.reset(); }
-        this->annealing_data = std::make_unique<Annealing::AnnealingData>();
-        this->annealing_data->ndelta = ndelta;
+    void SAC::set_annealing_params(double theta, int max_annealing_steps, double annealing_pace) {
+        if (!this->annealing_data) { 
+            this->annealing_data = std::make_unique<Annealing::AnnealingData>();
+        }
         this->annealing_data->theta = theta;
-        this->collecting_steps = collecting_steps;
-
         if (this->annealing_chain) { this->annealing_chain.reset(); }
         this->annealing_chain = std::make_unique<Annealing::AnnealingChain>(max_annealing_steps);
+        this->annealing_pace = annealing_pace;
+    }
+
+    void SAC::set_sampling_params(int ndelta, int bin_num, int bin_size, int collecting_steps, int stablization_pace) {
+        if (!this->annealing_data) { 
+            this->annealing_data = std::make_unique<Annealing::AnnealingData>();
+        }
+        this->annealing_data->ndelta = ndelta;
         if (this->measure) { this->measure.reset(); }
         this->measure = std::make_unique<Measure::Measure>(bin_num, bin_size);
+        this->collecting_steps = collecting_steps;
+        this->stablization_pace = stablization_pace;
     }
 
     void SAC::set_kernel_type(const std::string &kernel_type) {
@@ -221,7 +229,7 @@ namespace Simulation {
                 // randomly move over frequency domain
                 location_next = rand_location(Random::Engine);
             }
-            else { std::cerr << " Wrong occurs, check the width of updating window ! " << std::endl; exit(1); }
+            else { std::cerr << " Wrong occurs, check the width of updating window !\n" << std::endl; exit(1); }
 
             // compute updated correlation
             this->corr_next = this->corr_now + this->annealing_data->amplitude *
@@ -305,7 +313,7 @@ namespace Simulation {
                 location_next1 = rand_location(Random::Engine);
                 location_next2 = rand_location(Random::Engine);
             }
-            else { std::cerr << " Wrong occurs, check the width of updating window ! " << std::endl; exit(1); }
+            else { std::cerr << " Wrong occurs, check the width of updating window !\n" << std::endl; exit(1); }
 
             // compute updated correlation
             this->corr_next = this->corr_now + this->annealing_data->amplitude *
@@ -339,8 +347,8 @@ namespace Simulation {
             // n corresponds to index of bins
             for (int s = 0; s < this->measure->size_of_bin; ++s) {
                 // s corresponds to index of samples in one bin
-                // recalculate goodness chi2 every 10 steps
-                if ( s % 10 == 1 ) {
+                // recalculate goodness chi2 every `stablization_pace` steps
+                if ( s % this->stablization_pace == 1 ) {
                     this->chi2 = this->compute_goodness(this->corr_now);
                 }
                 this->update_deltas_1step();
@@ -422,7 +430,7 @@ namespace Simulation {
             }
 
             // lower down sampling temperature
-            this->annealing_data->theta /= 1.1;
+            this->annealing_data->theta *= this->annealing_pace;
         }
     }
 
@@ -508,10 +516,10 @@ namespace Simulation {
         const Eigen::VectorXd& diff = this->corr_from_qmc - corr_from_sac;
 
         int size = this->qmc_data_reader->cov_mat_dim;
-        boost::format header_format("%| 18d|%| 18d|%| 18d|%| 22d|%| 18d|%| 18d|%| 18d|");
-        boost::format out_format("%| 18.8f|%| 18.8f|%| 18.8f|%| 22.8f|%| 18.8f|%| 18.8f|%| 18.8f|");
-        outfile << header_format % "CorrMeanQMC" % "CorrErrorQMC" % "CovEigenValue"
-                                 % "CorrQMC(DiagSpace)" % "CorrSAC" % "Diff" % "SigamSAC"
+        boost::format header_format("%| 23d|%| 23d|%| 18d|%| 23d|%| 23d|%| 18d|%| 23d|");
+        boost::format out_format("%| 23.8f|%| 23.8f|%| 18.8f|%| 23.8f|%| 23.8f|%| 18.8f|%| 23.8f|");
+        outfile << header_format % "CorrMeanQMC(Scaled)" % "CorrErrorQMC(Scaled)" % "CovEigenValue"
+                                 % "CorrQMC(DiagSpace)" % "CorrSAC(DiagSpace)" % "Diff" % "SigmaSAC(DiagSpace)"
                 << std::endl;
         for (int i = 0; i < size; ++i) {
             outfile << out_format % this->qmc_data_reader->corr_mean_qmc(i)

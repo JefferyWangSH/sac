@@ -34,6 +34,9 @@ namespace Simulation {
         std::string update_type{};          // modes of MC update (single or pair)
         std::string kernel_type{};          // kernel type
 
+        double annealing_pace{};            // pace of annealing (annealing rate)
+        int stablization_pace{};            // pace of stablization (recompute chi2)
+
         Eigen::VectorXd tau_from_qmc{};     // tau points from QMC
         Eigen::VectorXd corr_from_qmc{};    // correlation functions from QMC
         Eigen::VectorXd sigma_from_qmc{};   // standard deviation of transformed correlations
@@ -89,8 +92,11 @@ namespace Simulation {
         /* set up parameters for grids of frequency domain */
         void set_griding_params(double freq_interval, double spec_interval, double freq_min, double freq_max);
 
+        /* set up paramters for the control of the annealing process */
+        void set_annealing_params(double theta, int max_annealing_steps, double annealing_pace);
+
         /* set up parameters for sampling procedure */
-        void set_sampling_params(int ndelta, double theta, int max_annealing_steps, int bin_num, int bin_size, int collecting_steps);
+        void set_sampling_params(int ndelta, int bin_num, int bin_size, int collecting_steps, int stablization_pace);
 
         /* set up kernel type */
         void set_kernel_type(const std::string &kernel_type);
