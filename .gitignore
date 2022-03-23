@@ -40,6 +40,11 @@
 build/*
 !build/runcmake.sh
 
-results/*
-!results/*.py
-!results/benchmark/*
+input/*
+!input/benchmark
+
+output/*
+!output/benchmark
+
+script/*
+!script/benchmark
