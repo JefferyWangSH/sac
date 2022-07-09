@@ -1,5 +1,5 @@
 #include "qmc_data_reader.h"
-#include "matrix_util.hpp"
+#include "linear_algebra.hpp"
 #include "random.h"
 
 #include <fstream>
@@ -220,7 +220,7 @@ namespace DataReader {
         // for a real symmetric matrix, orthogonal transformation T satisfies
         //   T * C * T^dagger -> Eigen space
         // where T is rotation matrix, which is orthogonal.
-        MatrixUtil::mkl_lapack_dsyev(this->cov_mat_dim, this->cov_mat, this->cov_eig, this->rotate_mat);
+        Utils::LinearAlgebra::mkl_lapack_dsyev(this->cov_mat_dim, this->cov_mat, this->cov_eig, this->rotate_mat);
 
         // alternative method with lower accuracy, using SVD
         // Eigen::MatrixXd u(cov_mat_dim, cov_mat_dim), v(cov_mat_dim, cov_mat_dim);

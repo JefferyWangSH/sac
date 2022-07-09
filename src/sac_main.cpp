@@ -10,10 +10,10 @@
 #include <boost/algorithm/string/constants.hpp>
 #include <boost/algorithm/string/classification.hpp>
 
-#include "sac.h"
+#include "sac_core.h"
 #include "qmc_data_reader.h"
 #include "freq_grids.h"
-#include "annealing_chain.h"
+#include "annealing.h"
 #include "measure.h"
 #include "random.h"
 
@@ -138,7 +138,7 @@ int main(int argc, char *argv[]) {
 
 
     /** SAC simulations */
-    Simulation::SAC *sac = new Simulation::SAC();
+    SAC::SacCore *sac = new SAC::SacCore();
     
     // set up random seeds for simulation
     // fixed seed for debug

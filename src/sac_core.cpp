@@ -1,4 +1,4 @@
-#include "sac.h"
+#include "sac_core.h"
 #include "random.h"
 
 #include <iostream>
@@ -6,48 +6,48 @@
 #include <iomanip>
 #include <boost/format.hpp>
 
-namespace Simulation {
+namespace SAC {
 
-    void SAC::set_qmc_reader_params(int lt, double beta, int nbin, int rebin_pace, int bootstrap_num) {
+    void SacCore::set_qmc_reader_params(int lt, double beta, int nbin, int rebin_pace, int bootstrap_num) {
         if (this->qmc_data_reader) { this->qmc_data_reader.reset(); }
         this->qmc_data_reader = std::make_unique<DataReader::QMCDataReader>();
         this->qmc_data_reader->set_params(lt, beta, nbin, rebin_pace, bootstrap_num);
     }
 
-    void SAC::set_file_path_tau(const std::string &tau_file_path) {
+    void SacCore::set_file_path_tau(const std::string &tau_file_path) {
         assert( this->qmc_data_reader );
         this->qmc_data_reader->read_tau_from_file(tau_file_path);
     }
 
-    void SAC::set_file_path_corr(const std::string &corr_file_path) {
+    void SacCore::set_file_path_corr(const std::string &corr_file_path) {
         assert( this->qmc_data_reader );
         this->qmc_data_reader->read_corr_from_file(corr_file_path);
     }
 
-    void SAC::set_outfile_path(const std::string &log_file_path, const std::string &spec_file_path, const std::string &report_file_path) {
+    void SacCore::set_outfile_path(const std::string &log_file_path, const std::string &spec_file_path, const std::string &report_file_path) {
         this->log_file_path = log_file_path;
         this->spec_file_path = spec_file_path;
         this->report_file_path = report_file_path;
     }
 
-    void SAC::set_griding_params(double freq_interval, double spec_interval, double freq_min, double freq_max) {
+    void SacCore::set_griding_params(double freq_interval, double spec_interval, double freq_min, double freq_max) {
         if (this->grids) { this->grids.reset(); }
         this->grids = std::make_unique<Grids::FreqGrids>(freq_interval, spec_interval, freq_min, freq_max);
     }
 
-    void SAC::set_annealing_params(double theta, int max_annealing_steps, double annealing_pace) {
+    void SacCore::set_annealing_params(double theta, int max_annealing_steps, double annealing_pace) {
         if (!this->annealing_data) { 
-            this->annealing_data = std::make_unique<Annealing::AnnealingData>();
+            this->annealing_data = std::make_unique<SimulatedAnnealing::MetaData>();
         }
         this->annealing_data->theta = theta;
         if (this->annealing_chain) { this->annealing_chain.reset(); }
-        this->annealing_chain = std::make_unique<Annealing::AnnealingChain>(max_annealing_steps);
+        this->annealing_chain = std::make_unique<SimulatedAnnealing::Chain>(max_annealing_steps);
         this->annealing_pace = annealing_pace;
     }
 
-    void SAC::set_sampling_params(int ndelta, int bin_num, int bin_size, int collecting_steps, int stablization_pace) {
+    void SacCore::set_sampling_params(int ndelta, int bin_num, int bin_size, int collecting_steps, int stablization_pace) {
         if (!this->annealing_data) { 
-            this->annealing_data = std::make_unique<Annealing::AnnealingData>();
+            this->annealing_data = std::make_unique<SimulatedAnnealing::MetaData>();
         }
         this->annealing_data->ndelta = ndelta;
         if (this->measure) { this->measure.reset(); }
@@ -56,17 +56,17 @@ namespace Simulation {
         this->stablization_pace = stablization_pace;
     }
 
-    void SAC::set_kernel_type(const std::string &kernel_type) {
+    void SacCore::set_kernel_type(const std::string &kernel_type) {
         assert( kernel_type == "fermion" || kernel_type == "boson" );
         this->kernel_type = kernel_type;
     }
 
-    void SAC::set_update_type(const std::string &update_type) {
+    void SacCore::set_update_type(const std::string &update_type) {
         assert( update_type == "single" || update_type == "pair" );
         this->update_type = update_type;
     }
 
-    void SAC::init() {
+    void SacCore::init() {
         assert( this->qmc_data_reader );
         assert( this->annealing_data && this->annealing_chain );
         assert( this->measure );
@@ -83,8 +83,8 @@ namespace Simulation {
 
         // initialize kernel
         if (this->kernel) { this->kernel.reset(); }
-        this->kernel = std::make_unique<Kernel::Kernel>(this->nt, this->grids->FreqNum());
-        this->kernel->init(*this, *this->grids, this->kernel_type);
+        this->kernel = std::make_unique<SAC::Kernel>(this->nt, this->grids->FreqNum());
+        this->kernel->initial(*this, *this->grids, this->kernel_type);
         this->kernel->rotate(qmc_data_reader->rotate_mat);
 
         // initialize correlations
@@ -103,7 +103,7 @@ namespace Simulation {
         this->spec.resize(this->grids->SpecNum());
     }
 
-    void SAC::init_from_module() {
+    void SacCore::init_from_module() {
         assert( this->qmc_data_reader );
         this->qmc_data_reader->analyse_corr();
         this->qmc_data_reader->discard_and_rotate();
@@ -117,7 +117,7 @@ namespace Simulation {
         this->sigma_from_qmc = (sqrt(this->qmc_data_reader->bootstrap_num) / this->qmc_data_reader->cov_eig.array().sqrt()).matrix();
     }
 
-    void SAC::init_spectrum() {
+    void SacCore::init_spectrum() {
         assert( this->annealing_data );
 
         // initialize locations of delta functions
@@ -163,19 +163,19 @@ namespace Simulation {
     }
 
 
-    void SAC::compute_corr_from_spec() {
+    void SacCore::compute_corr_from_spec() {
         assert( this->kernel && this->annealing_data );
         // Prerequisite: Eigen version > 3.3.9
-        const Eigen::MatrixXd& tmp_kernel = this->kernel->kernel(Eigen::all, this->annealing_data->locations);
+        const Eigen::MatrixXd& tmp_kernel = this->kernel->kernel()(Eigen::all, this->annealing_data->locations);
         this->corr_now = tmp_kernel * Eigen::VectorXd::Constant(this->annealing_data->ndelta, this->annealing_data->amplitude);
     }
 
-    double SAC::compute_goodness(const Eigen::VectorXd &corr) const {
+    double SacCore::compute_goodness(const Eigen::VectorXd &corr) const {
         assert( corr.size() == this->nt );
         return ((corr - this->corr_from_qmc).array() * this->sigma_from_qmc.array()).square().sum();
     }
 
-    void SAC::update_deltas_1step() {
+    void SacCore::update_deltas_1step() {
         if ( this->update_type == "single" ) {
             this->update_deltas_1step_single();
         }
@@ -188,7 +188,7 @@ namespace Simulation {
       *  One Monte Carlo step of updates of delta functions (ndelta number of moving attempt)
       *  randomly move of one delta function for one single attempt
       */
-    void SAC::update_deltas_1step_single() {
+    void SacCore::update_deltas_1step_single() {
         assert( this->annealing_data && this->grids && this->kernel );
 
         // helping params
@@ -233,7 +233,7 @@ namespace Simulation {
 
             // compute updated correlation
             this->corr_next = this->corr_now + this->annealing_data->amplitude *
-                    ( this->kernel->kernel.col(location_next) - this->kernel->kernel.col(location_now) );
+                    ( this->kernel->kernel().col(location_next) - this->kernel->kernel().col(location_now) );
 
             // compute updated chi2 and accepting radio
             chi2_next = this->compute_goodness(this->corr_next);
@@ -258,7 +258,7 @@ namespace Simulation {
       *  One Monte Carlo step of updates of delta functions (ndelta/2 number of moving attempt)
       *  randomly move of two delta functions for one single attempt
       */
-    void SAC::update_deltas_1step_pair() {
+    void SacCore::update_deltas_1step_pair() {
         assert( this->annealing_data && this->grids && this->kernel ); 
         assert( this->annealing_data->ndelta >= 2 );
 
@@ -317,8 +317,8 @@ namespace Simulation {
 
             // compute updated correlation
             this->corr_next = this->corr_now + this->annealing_data->amplitude *
-                    ( this->kernel->kernel.col(location_next1) - this->kernel->kernel.col(location_now1)
-                    + this->kernel->kernel.col(location_next2) - this->kernel->kernel.col(location_now2) );
+                    ( this->kernel->kernel().col(location_next1) - this->kernel->kernel().col(location_now1)
+                    + this->kernel->kernel().col(location_next2) - this->kernel->kernel().col(location_now2) );
 
             // compute updated chi2 and accepting radio
             chi2_next = this->compute_goodness(this->corr_next);
@@ -340,7 +340,7 @@ namespace Simulation {
         this->accept_radio = (double)accept_count / std::ceil(this->annealing_data->ndelta/2);
     }
 
-    void SAC::update_fixed_theta() {
+    void SacCore::update_fixed_theta() {
         assert( this->measure && this->annealing_data && this->grids );
         // total steps in a fixe theta: nbin * sbin
         for ( int n = 0; n < this->measure->nbin; ++n) {
@@ -372,7 +372,7 @@ namespace Simulation {
         }
     }
 
-    void SAC::write_log(int n) {
+    void SacCore::write_log(int n) {
         assert( this->measure && this->grids );
         assert( this->annealing_chain && this->annealing_data );
         // n labels index of bin number
@@ -392,7 +392,7 @@ namespace Simulation {
         }
         if (!is_empty) {
             boost::format log_format("%| 15d|%| 13d|%| 15.3e|%| 15.3e|%| 18.3e|%| 15.3e|%| 15.5f|%| 15.5e|");
-            log_out << log_format % (this->annealing_chain->len()+1)
+            log_out << log_format % (this->annealing_chain->length()+1)
                                   % (n+1) 
                                   % this->annealing_data->theta
                                   % (this->chi2_min/this->nt)
@@ -411,11 +411,11 @@ namespace Simulation {
         log_out.close();
     }
 
-    void SAC::perform_annealing() {
+    void SacCore::perform_annealing() {
         assert( this->measure );
         assert( this->annealing_chain && this->annealing_data );
         // annealing process, no more than `max_length` steps
-        for (int i = 0; i < this->annealing_chain->max_length; ++i) {
+        for (int i = 0; i < this->annealing_chain->max_length(); ++i) {
             // updating
             this->update_fixed_theta();
 
@@ -434,13 +434,13 @@ namespace Simulation {
         }
     }
 
-    void SAC::decide_sampling_theta() {
+    void SacCore::decide_sampling_theta() {
         assert( this->annealing_chain && this->annealing_data );
         // decide sampling temperature by slightly increasing theta
-        for (int i = this->annealing_chain->len()-1; i >= 0; --i) {
+        for (int i = this->annealing_chain->length()-1; i >= 0; --i) {
             // raise chi2 by a standard deviation with respect to the minimum
-            if ( this->annealing_chain->chain[i].chi2 > this->chi2_min + 2.0 * sqrt(this->chi2_min) ) {
-                *this->annealing_data = this->annealing_chain->chain[i];
+            if ( this->annealing_chain->chain(i).chi2 > this->chi2_min + 2.0 * sqrt(this->chi2_min) ) {
+                *this->annealing_data = this->annealing_chain->chain(i);
                 break;
             }
         }
@@ -452,7 +452,7 @@ namespace Simulation {
     }
 
 
-    void SAC::sample_and_collect() {
+    void SacCore::sample_and_collect() {
         assert( this->grids && this->annealing_data );
         // equilibrate at current sampling temperature
         this->update_fixed_theta();
@@ -482,7 +482,7 @@ namespace Simulation {
         this->spec *=  this->scale_factor / (this->collecting_steps * this->grids->SpecInterval());
     }
 
-    void SAC::output_recovered_spectrum() {
+    void SacCore::output_recovered_spectrum() {
         assert( this->grids );
         std::ofstream outfile(this->spec_file_path, std::ios::out|std::ios::trunc);
         if (!outfile.is_open()) {
@@ -496,7 +496,7 @@ namespace Simulation {
         outfile.close();
     }
 
-    void SAC::report_recovery_quality() {
+    void SacCore::report_recovery_quality() {
         assert( this->grids );
         assert( this->kernel );
         assert( this->qmc_data_reader );
@@ -511,7 +511,7 @@ namespace Simulation {
         for (int i = 0; i < locations.size(); ++i) {
             locations(i) = this->grids->Freq2FreqIndex(this->freq(i));
         }
-        const Eigen::MatrixXd& tmp_kernel = this->kernel->kernel(Eigen::all, locations);
+        const Eigen::MatrixXd& tmp_kernel = this->kernel->kernel()(Eigen::all, locations);
         const Eigen::VectorXd& corr_from_sac = tmp_kernel * this->spec * this->grids->SpecInterval()/this->scale_factor;
         const Eigen::VectorXd& diff = this->corr_from_qmc - corr_from_sac;
 
@@ -535,4 +535,4 @@ namespace Simulation {
     }
 
 
-} // namespace Simualtion
+} // namespace SAC

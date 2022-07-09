@@ -1,5 +1,5 @@
-#ifndef SAC_H
-#define SAC_H
+#ifndef SAC_SACCORE_H
+#define SAC_SACCORE_H
 #pragma once
 
 /**
@@ -17,14 +17,14 @@
 
 #include "qmc_data_reader.h"
 #include "freq_grids.h"
-#include "kernel.h"
-#include "annealing_chain.h"
+#include "sac_kernel.h"
+#include "annealing.h"
 #include "measure.h"
 
 
-namespace Simulation {
+namespace SAC {
     
-    class SAC {
+    class SacCore {
     public:
         /* model params */
         int nt{};                           // number of time slices
@@ -60,11 +60,11 @@ namespace Simulation {
         std::unique_ptr<Grids::FreqGrids> grids{};
 
         /* sampling params */
-        std::unique_ptr<Annealing::AnnealingData> annealing_data{};
-        std::unique_ptr<Annealing::AnnealingChain> annealing_chain{};
+        std::unique_ptr<SimulatedAnnealing::MetaData> annealing_data{};
+        std::unique_ptr<SimulatedAnnealing::Chain> annealing_chain{};
 
         /* kernel */
-        std::unique_ptr<Kernel::Kernel> kernel{};
+        std::unique_ptr<SAC::Kernel> kernel{};
 
         /* data from QMC input */
         std::unique_ptr<DataReader::QMCDataReader> qmc_data_reader{};
@@ -74,7 +74,7 @@ namespace Simulation {
 
     public:
         /* construction function */
-        SAC() = default;
+        SacCore() = default;
 
         /** subroutine for parameter settings */
         /* set up parameters for read in module */
@@ -151,6 +151,6 @@ namespace Simulation {
         void write_log(int n);
     };
 
-} // namespace Simulation
+} // namespace SAC
 
-#endif //SAC_H
+#endif //SAC_SACCORE_H
