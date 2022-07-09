@@ -1,16 +1,12 @@
 #include "random.h"
 
-namespace Random {
-    // definition
-    std::default_random_engine Engine(time(nullptr));
+namespace Utils {
 
-    // set up random seed for different processors
-    void set_seed(const int &rank) {
-        Engine.seed( time(nullptr)+rank );
+    // initialization of the static member
+    std::default_random_engine Random::Engine( time(nullptr) );
+
+    void Random::set_seed( const int seed ) {
+        Engine.seed( seed );
     }
 
-    // set up fixed seed
-    void set_seed_fix(const int &seed) {
-        Engine.seed(seed);
-    }    
-} // namespace Random
+} // namespace Utils

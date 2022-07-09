@@ -1,20 +1,22 @@
-#ifndef RANDOM_H
-#define RANDOM_H
+#ifndef UTILS_RANDOM_H
+#define UTILS_RANDOM_H
 #pragma once
 
 #include <random>
 
-/** global variable for random engine */
-namespace Random {
-    // random engine
-    extern std::default_random_engine Engine;
+namespace Utils {
 
-    // set up random seed for different processors
-    void set_seed(const int &rank);
+    // --------------------  Utils::Random class for generating random seeds used in MPI program  ----------------------
+    class Random {
+        public:
+            static std::default_random_engine Engine;
 
-    // set up fixed seed
-    void set_seed_fix(const int &seed);
+            // explicitly setup seeds for the random engine
+            // e.g. set_seed(123) with fixed seed for debug usages
+            // or set_seed( time(nullptr)+rank ) to setup different seeds for different Mpi processes
+            static void set_seed( const int seed );
+    };
 
-} // namespace Random
+} // namespace Utils
 
-#endif // RANDOM_H
+#endif // UTILS_RANDOM_H

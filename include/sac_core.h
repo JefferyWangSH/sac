@@ -17,9 +17,10 @@
 
 #include "qmc_data_reader.h"
 #include "freq_grids.h"
-#include "sac_kernel.h"
 #include "annealing.h"
-#include "measure.h"
+#include "sac_kernel.h"
+#include "sac_measure.h"
+
 
 
 namespace SAC {
@@ -48,7 +49,7 @@ namespace SAC {
         Eigen::VectorXd freq{};             // recovered frequency
         Eigen::VectorXd spec{};             // recovered spectrum
 
-        double accept_radio{};              // average accepting radio of MC move
+        double accept_ratio{};              // average accepting ratio of MC move
         double chi2{};                      // chi2 (goodness of fitting) of current spectrum
         double chi2_min{};                  // minimum of chi2
 
@@ -70,7 +71,7 @@ namespace SAC {
         std::unique_ptr<DataReader::QMCDataReader> qmc_data_reader{};
 
         /* measuring module */
-        std::unique_ptr<Measure::Measure> measure{};
+        std::unique_ptr<SAC::Measure> measure{};
 
     public:
         /* construction function */

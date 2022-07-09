@@ -51,7 +51,7 @@ namespace SAC {
         }
         this->annealing_data->ndelta = ndelta;
         if (this->measure) { this->measure.reset(); }
-        this->measure = std::make_unique<Measure::Measure>(bin_num, bin_size);
+        this->measure = std::make_unique<SAC::Measure>(bin_num, bin_size);
         this->collecting_steps = collecting_steps;
         this->stablization_pace = stablization_pace;
     }
@@ -76,7 +76,7 @@ namespace SAC {
         this->init_from_module();
 
         // initialize grids
-        this->grids->init();
+        this->grids->initial();
 
         // initialize spectrum
         this->init_spectrum();
@@ -96,7 +96,7 @@ namespace SAC {
         this->chi2 = this->compute_goodness(this->corr_now);
         this->chi2_min = this->chi2;
 
-        this->accept_radio = 0;
+        this->accept_ratio = 0;
 
         // initialize containers for recovering spectrum
         this->freq.resize(this->grids->SpecNum());
@@ -126,7 +126,7 @@ namespace SAC {
         std::uniform_int_distribution<> rand_delta(0, this->grids->FreqNum()-1);
         this->annealing_data->locations.resize(this->annealing_data->ndelta);
         for (int i = 0; i < this->annealing_data->locations.size(); ++i) {
-            this->annealing_data->locations(i) = rand_delta(Random::Engine);
+            this->annealing_data->locations(i) = rand_delta(Utils::Random::Engine);
         }
 
         // // delta-like distribution
@@ -206,13 +206,13 @@ namespace SAC {
         // attempt to move for ndelta times
         for (int i = 0; i < this->annealing_data->ndelta; ++i) {
             // randomly select one delta function
-            select_delta = rand_delta(Random::Engine);
+            select_delta = rand_delta(Utils::Random::Engine);
             location_now = this->annealing_data->locations[select_delta];
 
             if (this->annealing_data->window_width > 0 && this->annealing_data->window_width < this->grids->FreqNum()) {
                 // randomly move within window
-                move_width = rand_width(Random::Engine);
-                if (std::bernoulli_distribution(0.5)(Random::Engine)) {
+                move_width = rand_width(Utils::Random::Engine);
+                if (std::bernoulli_distribution(0.5)(Utils::Random::Engine)) {
                     location_next = location_now + move_width;
                 }
                 else {
@@ -227,7 +227,7 @@ namespace SAC {
             }
             else if (this->annealing_data->window_width == this->grids->FreqNum()) {
                 // randomly move over frequency domain
-                location_next = rand_location(Random::Engine);
+                location_next = rand_location(Utils::Random::Engine);
             }
             else { std::cerr << " Wrong occurs, check the width of updating window !\n" << std::endl; exit(1); }
 
@@ -239,7 +239,7 @@ namespace SAC {
             chi2_next = this->compute_goodness(this->corr_next);
             p = exp( (this->chi2 - chi2_next) / (2.0 * this->annealing_data->theta) );
 
-            if ( std::bernoulli_distribution(std::min(p, 1.0))(Random::Engine) ) {
+            if ( std::bernoulli_distribution(std::min(p, 1.0))(Utils::Random::Engine) ) {
                 // accepted
                 this->annealing_data->locations[select_delta] = location_next;
                 this->corr_now = this->corr_next;
@@ -251,7 +251,7 @@ namespace SAC {
             }
         }
         // compute accepting radio
-        this->accept_radio = (double)accept_count / this->annealing_data->ndelta;
+        this->accept_ratio = (double)accept_count / this->annealing_data->ndelta;
     }
 
     /**
@@ -279,19 +279,19 @@ namespace SAC {
         // moving pair of deltas in an attempt
         for (int i = 0; i < std::ceil(this->annealing_data->ndelta/2); i++) {
             // randomly select two different delta functions
-            select_delta1 = rand_delta(Random::Engine);
+            select_delta1 = rand_delta(Utils::Random::Engine);
             select_delta2 = select_delta1;
             while ( select_delta1 == select_delta2 ) {
-                select_delta2 = rand_delta(Random::Engine);
+                select_delta2 = rand_delta(Utils::Random::Engine);
             }
             location_now1 = this->annealing_data->locations[select_delta1];
             location_now2 = this->annealing_data->locations[select_delta2];
 
             if (this->annealing_data->window_width >=0 && this->annealing_data->window_width < this->grids->FreqNum()) {
                 // randomly select width of moving within window
-                move_width1 = rand_width(Random::Engine);
-                move_width2 = rand_width(Random::Engine);
-                if (std::bernoulli_distribution(0.5)(Random::Engine)) {
+                move_width1 = rand_width(Utils::Random::Engine);
+                move_width2 = rand_width(Utils::Random::Engine);
+                if (std::bernoulli_distribution(0.5)(Utils::Random::Engine)) {
                     location_next1 = location_now1 + move_width1;
                     location_next2 = location_now2 - move_width2;
                 }
@@ -310,8 +310,8 @@ namespace SAC {
             }
             else if (this->annealing_data->window_width == this->grids->FreqNum()) {
                 // randomly move over frequency domain
-                location_next1 = rand_location(Random::Engine);
-                location_next2 = rand_location(Random::Engine);
+                location_next1 = rand_location(Utils::Random::Engine);
+                location_next2 = rand_location(Utils::Random::Engine);
             }
             else { std::cerr << " Wrong occurs, check the width of updating window !\n" << std::endl; exit(1); }
 
@@ -324,7 +324,7 @@ namespace SAC {
             chi2_next = this->compute_goodness(this->corr_next);
             p = exp( (this->chi2 - chi2_next) / (2.0 * this->annealing_data->theta) );
 
-            if ( std::bernoulli_distribution(std::min(p, 1.0))(Random::Engine) ) {
+            if ( std::bernoulli_distribution(std::min(p, 1.0))(Utils::Random::Engine) ) {
                 // accepted
                 this->annealing_data->locations[select_delta1] = location_next1;
                 this->annealing_data->locations[select_delta2] = location_next2;
@@ -337,22 +337,22 @@ namespace SAC {
             }
         }
         // compute accepting radio
-        this->accept_radio = (double)accept_count / std::ceil(this->annealing_data->ndelta/2);
+        this->accept_ratio = (double)accept_count / std::ceil(this->annealing_data->ndelta/2);
     }
 
     void SacCore::update_fixed_theta() {
         assert( this->measure && this->annealing_data && this->grids );
         // total steps in a fixe theta: nbin * sbin
-        for ( int n = 0; n < this->measure->nbin; ++n) {
+        for ( int n = 0; n < this->measure->number_of_bin(); ++n) {
             // n corresponds to index of bins
-            for (int s = 0; s < this->measure->size_of_bin; ++s) {
+            for (int s = 0; s < this->measure->size_of_bin(); ++s) {
                 // s corresponds to index of samples in one bin
                 // recalculate goodness chi2 every `stablization_pace` steps
                 if ( s % this->stablization_pace == 1 ) {
                     this->chi2 = this->compute_goodness(this->corr_now);
                 }
                 this->update_deltas_1step();
-                this->measure->collect(s, this->chi2, this->accept_radio);
+                this->measure->collect(s, this->chi2, this->accept_ratio);
             }
 
             // compute means for bin of index `n`
@@ -363,10 +363,10 @@ namespace SAC {
 
             // adjust width of window
             // make sure the accepting radio of random move is around 0.5
-            if (this->measure->accept_radio_bin(n) > 0.5) {
+            if (this->measure->accept_ratio(n) > 0.5) {
                 this->annealing_data->window_width = std::min((int)std::ceil(this->annealing_data->window_width * 1.5), this->grids->FreqNum());
             }
-            if (this->measure->accept_radio_bin(n) < 0.4) {
+            if (this->measure->accept_ratio(n) < 0.4) {
                 this->annealing_data->window_width = std::ceil(this->annealing_data->window_width / 1.5);
             }
         }
@@ -396,9 +396,9 @@ namespace SAC {
                                   % (n+1) 
                                   % this->annealing_data->theta
                                   % (this->chi2_min/this->nt)
-                                  % (this->measure->chi2_bin(n)/this->nt)
-                                  % (this->measure->chi2_bin(n)-this->chi2_min)
-                                  % this->measure->accept_radio_bin(n)
+                                  % (this->measure->chi2(n)/this->nt)
+                                  % (this->measure->chi2(n)-this->chi2_min)
+                                  % this->measure->accept_ratio(n)
                                   % (this->annealing_data->window_width * this->grids->FreqInterval())
                     << std::endl;
         }

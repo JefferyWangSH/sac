@@ -3,57 +3,60 @@
 #pragma once
 
 /**
-  *  This header file includes FreqGrids class
-  *  for the construction of grids in frequency domain.
+  *  This header file defines `Grids::FreqGrids` class
+  *  for the construction of (hyperfine) grids in frequency domain.
   */
 
 namespace Grids {
 
+    // ---------------------------------------  Grids::FreqGrids class  -----------------------------------------
     class FreqGrids{
-    private:
-        /* griding params */
-        double freq_min{};         // minimum of frequency ( in space of continuum )
-        double freq_max{};         // maximum of frequency ( in space of continuum )
 
-        int int_freq_min{};        // min and max of frequency index, in unit of griding interval
-        int int_freq_max{};
+        private:
+            // griding params
+            double m_freq_min{};          // minimum of the frequency
+            double m_freq_max{};          // maximum of the frequency
 
-        double freq_interval{};     // frequency interval in sampling space
-        double spec_interval{};     // frequency interval of spectrum (frequency spacing in accumulated histogram)
+            int m_int_freq_min{};         // minimum of the frequency indices, in unit of the griding interval
+            int m_int_freq_max{};         // maximum of the frequency indices, in unit of the griding interval
 
-        int num_freq{};             // number of (fine) discrete frequencies in grids
-        int num_spec{};             // number of discrete frequencies in accumulated spectrum
+            double m_freq_interval{};     // (hyperfine) frequency interval in the sampling space
+            double m_spec_interval{};     // frequency interval of spectrum (frequency spacing in the accumulated histogram)
 
-    public:
-        FreqGrids() = default;
+            int m_num_freq{};             // number of (hyperfine) discrete frequency points
+            int m_num_spec{};             // number of discrete frequency points in the accumulated spectrum
 
-        FreqGrids(double freq_interval, double spec_interval, double freq_min, double freq_max);
+        public:
 
-        void init();
+            FreqGrids() = default;
+            FreqGrids( double freq_interval, double spec_interval, double freq_min, double freq_max );
 
-        /* frequency interval in fine grids */
-        double FreqInterval() const;
+            void initial();
 
-        /* frequency interval in accumulated spectrum */
-        double SpecInterval() const;
+            // frequency interval of the hyperfine grids
+            double FreqInterval() const;
 
-        /* number of intervals in fine grids */
-        int FreqNum() const;
+            // frequency interval of the accumulated spectrum
+            double SpecInterval() const;
 
-        /* number of intervals in accumulated spectrum */
-        int SpecNum() const;
+            // number of discrete hyperfine frequency points
+            int FreqNum() const;
 
-        /* conversion between discrete index of grids to continuum frequency */
-        double FreqIndex2Freq(const int &freq_index) const;
-        int Freq2FreqIndex(const double &freq) const;
+            // number of discrete frequency points in the accumulated spectrum
+            int SpecNum() const;
 
-        /* convert discrete index of spectrum to continuum frequency */
-        double SpecIndex2Freq(const int &spec_index) const;
+            // conversion between indices of discrete (hyperfine) frequency points and continuum frequency
+            int Freq2FreqIndex( double freq )         const;
+            double FreqIndex2Freq( int freq_index )   const;
 
-        /* convert index of frequency grids to index of spectrum bins */
-        int FreqIndex2SpecIndex(const int &freq_index) const;
+            // convert the indices of discrete (spectral) frequency points to continuum frequency
+            double SpecIndex2Freq( int spec_index )   const;
+
+            // convert the index of hyperfine frequency grids to that of the spectral ones
+            int FreqIndex2SpecIndex( int freq_index ) const;
+
     };
 
 } // namespace Grids
 
-#endif //SAC_FREQ_GRIDS_H
+#endif // SAC_FREQ_GRIDS_H

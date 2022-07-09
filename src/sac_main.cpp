@@ -11,10 +11,10 @@
 #include <boost/algorithm/string/classification.hpp>
 
 #include "sac_core.h"
+#include "sac_measure.h"
 #include "qmc_data_reader.h"
 #include "freq_grids.h"
 #include "annealing.h"
-#include "measure.h"
 #include "random.h"
 
 
@@ -193,8 +193,8 @@ int main(int argc, char *argv[]) {
     std::cout << fmt_param_double % "Annealing rate 'annealing_pace'" % joiner % sac->annealing_pace << std::endl;
     std::cout << fmt_param_double % "Stablization rate 'stablization_pace'" % joiner % sac->stablization_pace << std::endl;
     std::cout << fmt_param_int % "Number of delta functions 'ndelta'" % joiner % sac->annealing_data->ndelta << std::endl;
-    std::cout << fmt_param_int % "Number of meausring bins 'nbin-sac'" % joiner % sac->measure->nbin << std::endl;
-    std::cout << fmt_param_int % "Capacity of a measuring bin 'sbin-sac'" % joiner % sac->measure->size_of_bin << std::endl;
+    std::cout << fmt_param_int % "Number of meausring bins 'nbin-sac'" % joiner % sac->measure->number_of_bin() << std::endl;
+    std::cout << fmt_param_int % "Capacity of a measuring bin 'sbin-sac'" % joiner % sac->measure->size_of_bin() << std::endl;
     std::cout << fmt_param_int % "Number of spec samples 'collecting_steps'" % joiner % sac->collecting_steps << std::endl << std::endl;
     
     std::cout << fmt_param_science % "Interval of fine grids 'freq_interval'" % joiner % sac->grids->FreqInterval() << std::endl;

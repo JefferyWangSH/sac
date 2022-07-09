@@ -3,7 +3,7 @@
 
 namespace SimulatedAnnealing {
 
-    // interfaces
+    // interface member functions
     int Chain::length() const { return this->m_length; }
     int Chain::max_length() const { return this->m_max_length; }
 

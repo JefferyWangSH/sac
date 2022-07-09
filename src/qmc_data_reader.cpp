@@ -140,7 +140,7 @@ namespace DataReader {
         std::uniform_int_distribution<> rand_bin(0, this->nbin-1);
         for (int i = 0; i < this->bootstrap_num; ++i) {
             for (int bin = 0; bin < this->nbin; bin++) {
-                this->bootstrap_samples.row(i) += this->bin_data_qmc.row(rand_bin(Random::Engine));
+                this->bootstrap_samples.row(i) += this->bin_data_qmc.row(rand_bin(Utils::Random::Engine));
             }
         }
         this->bootstrap_samples /= this->nbin;
@@ -228,4 +228,4 @@ namespace DataReader {
         // rotate_mat = u.transpose();
     }
 
-} // namespace DataRead
+} // namespace DataReader

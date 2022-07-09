@@ -21,21 +21,20 @@ namespace Grids { class FreqGrids; }
 
 namespace SAC {
     
-
     class SacCore;
 
     // -------------------------------------  SAC::Kernel class  -----------------------------------------
     class Kernel {
 
         private:
-            int m_nt{};                       // dimension of time
-            int m_nfreq{};                    // dimension of frequency (hyperfine)
+            int m_time_size{};                // dimension of time
+            int m_freq_size{};                // dimension of (hyperfine) frequency
             Eigen::MatrixXd m_kernel{};       // kernel matrix
 
         public:
 
             Kernel() = default;
-            Kernel( int nt, int nfreq );
+            Kernel( int time_size, int freq_size );
             
             // initialize the kernel object from time and frequency grids
             void initial ( const SAC::SacCore& sac, 
@@ -49,7 +48,7 @@ namespace SAC {
             int time_size() const;
             int freq_size() const;
             const Eigen::MatrixXd& kernel()  const;
-            double kernel( int t, int freq ) const;
+            // double kernel( int t, int freq ) const;
 
     };
 
