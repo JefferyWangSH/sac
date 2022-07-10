@@ -14,7 +14,7 @@
 #include <Eigen/Core>
 
 
-namespace SAC{
+namespace SAC {
     
     // --------------------------------------  SAC::Measure class  ----------------------------------------
     class Measure {

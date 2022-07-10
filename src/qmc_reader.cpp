@@ -1,4 +1,4 @@
-#include "qmc_data_reader.h"
+#include "qmc_reader.h"
 #include "linear_algebra.hpp"
 #include "random.h"
 
@@ -10,9 +10,9 @@
 #include <boost/lexical_cast.hpp>
 
 
-namespace DataReader {
+namespace SAC::Initializer {
 
-    void QMCDataReader::set_params(int lt, double beta, int nbin, int rebin_pace, int boostrap_num) {
+    void QmcReader::set_params(int lt, double beta, int nbin, int rebin_pace, int boostrap_num) {
         assert( lt > 0 && beta > 0 );
         assert( nbin > 0 && boostrap_num > 0 );
         assert( rebin_pace > 0 && rebin_pace <= nbin );
@@ -27,7 +27,7 @@ namespace DataReader {
         this->allocate_memory();
     }
 
-    void QMCDataReader::allocate_memory() {
+    void QmcReader::allocate_memory() {
         this->tau_qmc.resize(this->lt);
         this->corr_mean_qmc.resize(this->lt);
         this->corr_err_qmc.resize(this->lt);
@@ -36,7 +36,7 @@ namespace DataReader {
         this->bootstrap_samples.resize(this->bootstrap_num, this->lt);
     }
 
-    void QMCDataReader::deallocate_memory() {
+    void QmcReader::deallocate_memory() {
         // free useless objects which cost large memory
         this->bin_data_qmc.resize(0, 0);
         this->bootstrap_samples.resize(0, 0);
@@ -46,7 +46,7 @@ namespace DataReader {
         this->corr_err_qmc.resize(0);
     }
 
-    void QMCDataReader::read_tau_from_file(const std::string &tau_file_path) {
+    void QmcReader::read_tau_from_file(const std::string &tau_file_path) {
         std::ifstream infile(tau_file_path, std::ios::in);
         if (!infile.is_open()) {
             std::cerr << boost::format(" Fail to open file %s, check the input.\n") % tau_file_path << std::endl;
@@ -78,7 +78,7 @@ namespace DataReader {
         infile.close();
     }
 
-    void QMCDataReader::read_corr_from_file(const std::string &corr_file_path) {
+    void QmcReader::read_corr_from_file(const std::string &corr_file_path) {
         std::ifstream infile(corr_file_path, std::ios::in);
         if (!infile.is_open()) {
             std::cerr << boost::format(" Fail to open file %s, check the input.\n") % corr_file_path << std::endl;
@@ -118,7 +118,7 @@ namespace DataReader {
         infile.close();
     }
 
-    void QMCDataReader::compute_corr_means() {
+    void QmcReader::compute_corr_means() {
         // clear previous data
         this->corr_mean_qmc.setZero();
 
@@ -131,7 +131,7 @@ namespace DataReader {
         this->g0 = this->corr_mean_qmc[0];
     }
 
-    void QMCDataReader::compute_corr_errs() {
+    void QmcReader::compute_corr_errs() {
         // clear previous data
         this->corr_err_qmc.setZero();
 
@@ -152,12 +152,12 @@ namespace DataReader {
         this->corr_err_qmc = (this->corr_err_qmc/this->bootstrap_num).array().sqrt().matrix();
     }
 
-    void QMCDataReader::analyse_corr() {
+    void QmcReader::analyse_corr() {
         this->compute_corr_means();
         this->compute_corr_errs();
     }
 
-    void QMCDataReader::discard_poor_quality_data() {
+    void QmcReader::discard_poor_quality_data() {
         // discard correlations with poor data quality
         // criteria: relative error less than 0.1
         // helping param containing index of which the correlation has `good` data quality
@@ -189,7 +189,7 @@ namespace DataReader {
         this->bootstrap_samples = tmp_bootstrap_samples;
     }
 
-    void QMCDataReader::compute_cov_matrix() {
+    void QmcReader::compute_cov_matrix() {
         // clear previous data
         this->cov_mat = Eigen::MatrixXd::Zero(this->cov_mat_dim, this->cov_mat_dim);
 
@@ -204,7 +204,7 @@ namespace DataReader {
         }
     }
 
-    void QMCDataReader::discard_and_rotate() {
+    void QmcReader::discard_and_rotate() {
         // discard correlations with poor data quality
         this->discard_poor_quality_data();
 

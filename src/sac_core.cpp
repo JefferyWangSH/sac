@@ -10,7 +10,7 @@ namespace SAC {
 
     void SacCore::set_qmc_reader_params(int lt, double beta, int nbin, int rebin_pace, int bootstrap_num) {
         if (this->qmc_data_reader) { this->qmc_data_reader.reset(); }
-        this->qmc_data_reader = std::make_unique<DataReader::QMCDataReader>();
+        this->qmc_data_reader = std::make_unique<SAC::Initializer::QmcReader>();
         this->qmc_data_reader->set_params(lt, beta, nbin, rebin_pace, bootstrap_num);
     }
 
@@ -37,17 +37,17 @@ namespace SAC {
 
     void SacCore::set_annealing_params(double theta, int max_annealing_steps, double annealing_pace) {
         if (!this->annealing_data) { 
-            this->annealing_data = std::make_unique<SimulatedAnnealing::MetaData>();
+            this->annealing_data = std::make_unique<SAC::Annealing::MetaData>();
         }
         this->annealing_data->theta = theta;
         if (this->annealing_chain) { this->annealing_chain.reset(); }
-        this->annealing_chain = std::make_unique<SimulatedAnnealing::Chain>(max_annealing_steps);
+        this->annealing_chain = std::make_unique<SAC::Annealing::Chain>(max_annealing_steps);
         this->annealing_pace = annealing_pace;
     }
 
     void SacCore::set_sampling_params(int ndelta, int bin_num, int bin_size, int collecting_steps, int stablization_pace) {
         if (!this->annealing_data) { 
-            this->annealing_data = std::make_unique<SimulatedAnnealing::MetaData>();
+            this->annealing_data = std::make_unique<SAC::Annealing::MetaData>();
         }
         this->annealing_data->ndelta = ndelta;
         if (this->measure) { this->measure.reset(); }

@@ -1,7 +1,7 @@
-#include "annealing.h"
+#include "sac_annealing.h"
 #include <iostream>
 
-namespace SimulatedAnnealing {
+namespace SAC::Annealing {
 
     // interface member functions
     int Chain::length() const { return this->m_length; }
@@ -29,7 +29,7 @@ namespace SimulatedAnnealing {
             this->m_length++;
         }
         else {
-            std::cerr << "SimulatedAnnealing::Chain::push(): "
+            std::cerr << "SAC::Annealing::Chain::push(): "
                       << "annealing chain longer than permitted." << std::endl;
             exit(1);
         }
@@ -44,4 +44,4 @@ namespace SimulatedAnnealing {
         // this->chain.shrink_to_fit();
     }
 
-} // namespace SimulatedAnnealing
+} // namespace SAC::Annealing

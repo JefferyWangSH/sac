@@ -12,9 +12,9 @@
 
 #include "sac_core.h"
 #include "sac_measure.h"
-#include "qmc_data_reader.h"
+#include "qmc_reader.h"
 #include "freq_grids.h"
-#include "annealing.h"
+#include "sac_annealing.h"
 #include "random.h"
 
 

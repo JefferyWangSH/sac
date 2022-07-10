@@ -15,9 +15,9 @@
 #define EIGEN_VECTORIZE_SSE4_2
 #include <Eigen/Core>
 
-#include "qmc_data_reader.h"
+#include "qmc_reader.h"
 #include "freq_grids.h"
-#include "annealing.h"
+#include "sac_annealing.h"
 #include "sac_kernel.h"
 #include "sac_measure.h"
 
@@ -61,14 +61,14 @@ namespace SAC {
         std::unique_ptr<Grids::FreqGrids> grids{};
 
         /* sampling params */
-        std::unique_ptr<SimulatedAnnealing::MetaData> annealing_data{};
-        std::unique_ptr<SimulatedAnnealing::Chain> annealing_chain{};
+        std::unique_ptr<SAC::Annealing::MetaData> annealing_data{};
+        std::unique_ptr<SAC::Annealing::Chain> annealing_chain{};
 
         /* kernel */
         std::unique_ptr<SAC::Kernel> kernel{};
 
         /* data from QMC input */
-        std::unique_ptr<DataReader::QMCDataReader> qmc_data_reader{};
+        std::unique_ptr<SAC::Initializer::QmcReader> qmc_data_reader{};
 
         /* measuring module */
         std::unique_ptr<SAC::Measure> measure{};

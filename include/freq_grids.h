@@ -1,5 +1,5 @@
-#ifndef SAC_FREQ_GRIDS_H
-#define SAC_FREQ_GRIDS_H
+#ifndef GRIDS_FREQ_GRIDS_H
+#define GRIDS_FREQ_GRIDS_H
 #pragma once
 
 /**
@@ -10,7 +10,7 @@
 namespace Grids {
 
     // ---------------------------------------  Grids::FreqGrids class  -----------------------------------------
-    class FreqGrids{
+    class FreqGrids {
 
         private:
             // griding params
@@ -59,4 +59,4 @@ namespace Grids {
 
 } // namespace Grids
 
-#endif // SAC_FREQ_GRIDS_H
+#endif // GRIDS_FREQ_GRIDS_H

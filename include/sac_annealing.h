@@ -1,10 +1,10 @@
-#ifndef SIMULATED_ANNEALING_H
-#define SIMULATED_ANNEALING_H
+#ifndef SAC_ANNEALING_H
+#define SAC_ANNEALING_H
 #pragma once
 
 /**
-  *  This header file defines `SimulatedAnnealing::MetaData` structrue 
-  *  and `SimulatedAnnealing::Chain` class 
+  *  This header file defines `SAC::Annealing::MetaData` structrue 
+  *  and `SAC::Annealing::Chain` class 
   *  for the storage of simulating information and params 
   *  during the simulated annealing process of SAC.
   */
@@ -15,10 +15,10 @@
 #include <Eigen/Core>
 
 
-namespace SimulatedAnnealing{
+namespace SAC::Annealing {
     
-    // -----------------------------  SimulatedAnnealing::MetaData structure  --------------------------------
-    struct MetaData{
+    // -----------------------------  SAC::Annealing::MetaData structure  --------------------------------
+    struct MetaData {
 
         double theta{};                         // sampling temperature
         int ndelta{};                           // number of delta functions
@@ -30,7 +30,7 @@ namespace SimulatedAnnealing{
     };
 
 
-    // ---------------------------------  SimulatedAnnealing::Chain class  -----------------------------------
+    // --------------------------------  SAC::Annealing::Chain class  ------------------------------------
     class Chain {
         
         private:
@@ -57,6 +57,6 @@ namespace SimulatedAnnealing{
  
     };
 
-} // namespace SimulatedAnnealing
+} // namespace SAC::Annealing
 
-#endif // SIMULATED_ANNEALING_H
+#endif // SAC_ANNEALING_H
