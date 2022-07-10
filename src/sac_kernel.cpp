@@ -1,5 +1,5 @@
 #include "sac_kernel.h"
-#include "sac_core.h"
+#include "sac.h"
 #include "freq_grids.h"
 
 namespace SAC {

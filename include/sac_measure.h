@@ -75,4 +75,4 @@ namespace SAC {
 
 } // namespace SAC
 
-#endif //SAC_MEASURE_H
+#endif // SAC_MEASURE_H

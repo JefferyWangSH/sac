@@ -3,155 +3,59 @@
 #pragma once
 
 /**
-  *  This head file includes SAC class for the implementation of stochastic analytic continuation method,
-  *  proposed by Anders.W. Sandvik.
-  *  A Monte Carlo process and simulated annealing are performed
-  *  to extract real-frequency spectral information from imaginary-time correlation functions,
-  *  which can be obtained previously by QMC calculations.
+  *  This header file defines `SAC::SacCore` class as a central module of the SAC method.
+  *  The stochastic analytic continuation method (SAC) 
+  *  was first proposed by Anders.W. Sandvik in 1998. 
+  *  It performs a Monte Carlo simulation combining with a simulated annealing process
+  *  to extract the real-frequency spectral information 
+  *  from imaginary-time QMC correlation functions.
   */
 
-#include <memory>
 #define EIGEN_USE_MKL_ALL
 #define EIGEN_VECTORIZE_SSE4_2
 #include <Eigen/Core>
 
-#include "qmc_reader.h"
-#include "freq_grids.h"
-#include "sac_annealing.h"
-#include "sac_kernel.h"
-#include "sac_measure.h"
-
-
 
 namespace SAC {
-    
-    class SacCore {
-    public:
-        /* model params */
-        int nt{};                           // number of time slices
-        double beta{};                      // inverse temperature
-        double scale_factor{};              // scaling factor G(0)
 
-        std::string update_type{};          // modes of MC update (single or pair)
-        std::string kernel_type{};          // kernel type
+    // -------------------------------------------  SAC::SacCore class  ----------------------------------------------
+    // Todo: rename Core to SacCore
+    class Core {
 
-        double annealing_pace{};            // pace of annealing (annealing rate)
-        int stablization_pace{};            // pace of stablization (recompute chi2)
+        private:
 
-        Eigen::VectorXd tau_from_qmc{};     // tau points from QMC
-        Eigen::VectorXd corr_from_qmc{};    // correlation functions from QMC
-        Eigen::VectorXd sigma_from_qmc{};   // standard deviation of transformed correlations
+            // information about the QMC data
+            int m_time_size{};                    // number of imaginary-time points
+            double m_beta{};                      // inverse temperature
+            double m_scaling_factor{};            // scaling factor G(t=0)
 
-        Eigen::VectorXd corr_now{};         // current correlation function
-        Eigen::VectorXd corr_next{};        // updated correlation function
+            double m_annealing_pace{};            // pace of annealing (annealing rate)
+            int m_stablization_pace{};            // pace of stablization (recompute chi2)
 
-        int collecting_steps{};             // number of MC steps for collecting spectrum
-        Eigen::VectorXd freq{};             // recovered frequency
-        Eigen::VectorXd spec{};             // recovered spectrum
+            Eigen::VectorXd m_tgrids_qmc{};       // imaginary-time points from QMC (processed)
+            Eigen::VectorXd m_corr_qmc{};         // correlation functions from QMC (processed)
+            Eigen::VectorXd m_sigma_qmc{};        // standard deviation of the transformed correlations
 
-        double accept_ratio{};              // average accepting ratio of MC move
-        double chi2{};                      // chi2 (goodness of fitting) of current spectrum
-        double chi2_min{};                  // minimum of chi2
+            Eigen::VectorXd m_corr_now{};         // current correlation functions
+            Eigen::VectorXd m_corr_next{};        // updated correlation functions
 
-        std::string log_file_path{};        // path of logging out file
-        std::string spec_file_path{};       // path of spectrum out file
-        std::string report_file_path{};     // path of quality report file
+            int m_collecting_steps{};             // number of MC steps for collecting spectrum
+            Eigen::VectorXd m_freq{};             // frequency list of the recovered spectral function
+            Eigen::VectorXd m_spec{};             // recovered spectral function
 
-        /* griding params */
-        std::unique_ptr<Grids::FreqGrids> grids{};
+            double m_accept_ratio{};              // averaged accepting ratio of MC moves
+            double m_chi2{};                      // chi2 (goodness of fitting) of the current spectral configs
+            double m_chi2_min{};                  // minimum of chi2
 
-        /* sampling params */
-        std::unique_ptr<SAC::Annealing::MetaData> annealing_data{};
-        std::unique_ptr<SAC::Annealing::Chain> annealing_chain{};
+        public:
 
-        /* kernel */
-        std::unique_ptr<SAC::Kernel> kernel{};
+            Core() = default;
 
-        /* data from QMC input */
-        std::unique_ptr<SAC::Initializer::QmcReader> qmc_data_reader{};
 
-        /* measuring module */
-        std::unique_ptr<SAC::Measure> measure{};
 
-    public:
-        /* construction function */
-        SacCore() = default;
 
-        /** subroutine for parameter settings */
-        /* set up parameters for read in module */
-        void set_qmc_reader_params(int lt, double beta, int nbin, int rebin_pace, int bootstrap_num);
-
-        /* set up file which contains data of tau points */
-        void set_file_path_tau(const std::string &tau_file_path);
-
-        /* set up file which contains data of time correlations */
-        void set_file_path_corr(const std::string &corr_file_path);
-
-        /* set up path of output file, including output of logs, recovered spectrum and quality report */
-        void set_outfile_path(const std::string &log_file_path, const std::string &spec_file_path, const std::string &report_file_path);
-
-        /* set up parameters for grids of frequency domain */
-        void set_griding_params(double freq_interval, double spec_interval, double freq_min, double freq_max);
-
-        /* set up paramters for the control of the annealing process */
-        void set_annealing_params(double theta, int max_annealing_steps, double annealing_pace);
-
-        /* set up parameters for sampling procedure */
-        void set_sampling_params(int ndelta, int bin_num, int bin_size, int collecting_steps, int stablization_pace);
-
-        /* set up kernel type */
-        void set_kernel_type(const std::string &kernel_type);
-
-        /* set up updating type */
-        void set_update_type(const std::string &update_type);
-
-        /* initialization */
-        void init();
-
-        /* annealing process */
-        void perform_annealing();
-
-        /* determine sampling temperature after annealing */
-        void decide_sampling_theta();
-
-        /* sampling and collect spectrum */
-        void sample_and_collect();
-
-        /* file output of recovered spectrum */
-        void output_recovered_spectrum();
-
-        /* output quality information about the recovered spectrum */
-        void report_recovery_quality();
-
-    private:
-        /* read and preprocessing QMC data */
-        void init_from_module();
-
-        /* initialize spectrum */
-        void init_spectrum();
-
-        /* computing current correlations from spectrum */
-        void compute_corr_from_spec();
-
-        /* compute chi2, the goodness of fitting, for any input correlations */
-        double compute_goodness(const Eigen::VectorXd &corr_from_spectrum) const;
-
-        /* one step of Monte Carlo update of delta functions */
-        void update_deltas_1step();
-
-        /* move one single delta function in an attempted update */
-        void update_deltas_1step_single();
-
-        /* move one pair of delta functions in an attempted update */
-        void update_deltas_1step_pair();
-
-        /* equilibrium of system at a fixed theta */
-        void update_fixed_theta();
-
-        /* log output: n labels index of bin */
-        void write_log(int n);
     };
 
 } // namespace SAC
 
-#endif //SAC_SACCORE_H
+#endif // SAC_SACCORE_H
