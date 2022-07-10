@@ -16,7 +16,7 @@ namespace SAC {
 
     void SacCore::set_file_path_tau(const std::string &tau_file_path) {
         assert( this->qmc_data_reader );
-        this->qmc_data_reader->read_tau_from_file(tau_file_path);
+        this->qmc_data_reader->read_tgrids_from_file(tau_file_path);
     }
 
     void SacCore::set_file_path_corr(const std::string &corr_file_path) {
@@ -85,7 +85,7 @@ namespace SAC {
         if (this->kernel) { this->kernel.reset(); }
         this->kernel = std::make_unique<SAC::Kernel>(this->nt, this->grids->FreqNum());
         this->kernel->initial(*this, *this->grids, this->kernel_type);
-        this->kernel->rotate(qmc_data_reader->rotate_mat);
+        this->kernel->rotate(qmc_data_reader->rotate_mat());
 
         // initialize correlations
         this->corr_now.resize(this->nt);
@@ -106,15 +106,15 @@ namespace SAC {
     void SacCore::init_from_module() {
         assert( this->qmc_data_reader );
         this->qmc_data_reader->analyse_corr();
-        this->qmc_data_reader->discard_and_rotate();
+        this->qmc_data_reader->filter_and_rotate();
 
-        this->nt = this->qmc_data_reader->cov_mat_dim;
-        this->beta = this->qmc_data_reader->beta;
-        this->scale_factor = this->qmc_data_reader->g0;
+        this->nt = this->qmc_data_reader->cov_mat_dim();
+        this->beta = this->qmc_data_reader->beta();
+        this->scale_factor = this->qmc_data_reader->scaling_factor();
 
-        this->tau_from_qmc = this->qmc_data_reader->tau_qmc;
-        this->corr_from_qmc = this->qmc_data_reader->rotate_mat * this->qmc_data_reader->corr_mean_qmc;
-        this->sigma_from_qmc = (sqrt(this->qmc_data_reader->bootstrap_num) / this->qmc_data_reader->cov_eig.array().sqrt()).matrix();
+        this->tau_from_qmc = this->qmc_data_reader->tgrids_qmc();
+        this->corr_from_qmc = this->qmc_data_reader->rotate_mat() * this->qmc_data_reader->corr_mean_qmc();
+        this->sigma_from_qmc = (sqrt(this->qmc_data_reader->bootstrap_num()) / this->qmc_data_reader->eig_vec().array().sqrt()).matrix();
     }
 
     void SacCore::init_spectrum() {
@@ -157,7 +157,7 @@ namespace SAC {
 
         // initialize width of random move window
         // FIXME: 1/10 of average frequency ?
-        double average_freq = std::abs(log(1.0/this->qmc_data_reader->corr_mean_qmc[this->nt-1]) / this->tau_from_qmc[this->nt-1]);
+        double average_freq = std::abs(log(1.0/this->qmc_data_reader->corr_mean_qmc()[this->nt-1]) / this->tau_from_qmc[this->nt-1]);
         this->annealing_data->window_width = std::ceil( 0.1 * average_freq / this->grids->FreqInterval() );
         // this->annealing_data->window_width = std::std::ceil( 0.5 * this->grids->FreqNum() );
     }
@@ -515,16 +515,16 @@ namespace SAC {
         const Eigen::VectorXd& corr_from_sac = tmp_kernel * this->spec * this->grids->SpecInterval()/this->scale_factor;
         const Eigen::VectorXd& diff = this->corr_from_qmc - corr_from_sac;
 
-        int size = this->qmc_data_reader->cov_mat_dim;
+        int size = this->qmc_data_reader->cov_mat_dim();
         boost::format header_format("%| 23d|%| 23d|%| 18d|%| 23d|%| 23d|%| 18d|%| 23d|");
         boost::format out_format("%| 23.8f|%| 23.8f|%| 18.8f|%| 23.8f|%| 23.8f|%| 18.8f|%| 23.8f|");
         outfile << header_format % "CorrMeanQMC(Scaled)" % "CorrErrorQMC(Scaled)" % "CovEigenValue"
                                  % "CorrQMC(DiagSpace)" % "CorrSAC(DiagSpace)" % "Diff" % "SigmaSAC(DiagSpace)"
                 << std::endl;
         for (int i = 0; i < size; ++i) {
-            outfile << out_format % this->qmc_data_reader->corr_mean_qmc(i)
-                                  % this->qmc_data_reader->corr_err_qmc(i)
-                                  % this->qmc_data_reader->cov_eig(i)
+            outfile << out_format % this->qmc_data_reader->corr_mean_qmc()(i)
+                                  % this->qmc_data_reader->corr_err_qmc()(i)
+                                  % this->qmc_data_reader->eig_vec()(i)
                                   % this->corr_from_qmc(i)
                                   % corr_from_sac(i)
                                   % diff(i)

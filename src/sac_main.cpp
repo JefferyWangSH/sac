@@ -179,11 +179,11 @@ int main(int argc, char *argv[]) {
     const std::string& joiner = "->";
     std::cout << " Annealing starts with the following parameters :\n" << std::endl;
 
-    std::cout << fmt_param_int % "Number of tau points in QMC 'lt'" % joiner % sac->qmc_data_reader->lt << std::endl;
-    std::cout << fmt_param_double % "Inverse temperature in QMC 'beta'" % joiner % sac->qmc_data_reader->beta << std::endl;
-    std::cout << fmt_param_int % "Number of bins in QMC 'nbin-qmc'" % joiner % sac->qmc_data_reader->nbin_total << std::endl;
-    std::cout << fmt_param_int % "Rebin pace of QMC bin data 'rebin_pace'" % joiner % sac->qmc_data_reader->rebin_pace << std::endl;
-    std::cout << fmt_param_int % "Number of bootstrap samples 'nbootstrap'" % joiner % sac->qmc_data_reader->bootstrap_num << std::endl << std::endl;
+    std::cout << fmt_param_int % "Number of tau points in QMC 'lt'" % joiner % sac->qmc_data_reader->time_num() << std::endl;
+    std::cout << fmt_param_double % "Inverse temperature in QMC 'beta'" % joiner % sac->qmc_data_reader->beta() << std::endl;
+    std::cout << fmt_param_int % "Number of bins in QMC 'nbin-qmc'" % joiner % sac->qmc_data_reader->bin_num_total() << std::endl;
+    std::cout << fmt_param_int % "Rebin pace of QMC bin data 'rebin_pace'" % joiner % sac->qmc_data_reader->rebin_pace() << std::endl;
+    std::cout << fmt_param_int % "Number of bootstrap samples 'nbootstrap'" % joiner % sac->qmc_data_reader->bootstrap_num() << std::endl << std::endl;
     
     std::cout << fmt_param_str % "Type of kernel 'kernel_type'" % joiner % sac->kernel_type << std::endl;
     std::cout << fmt_param_str % "Type of MC updates 'update_type'" % joiner % sac->update_type << std::endl << std::endl;
