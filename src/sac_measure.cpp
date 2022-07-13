@@ -39,10 +39,12 @@ namespace SAC {
     {
         this->m_number_of_bin = number_of_bin;
         this->m_size_of_bin = size_of_bin;
+
         this->m_accept_ratio_sample.resize(size_of_bin);
         this->m_chi2_sample.resize(size_of_bin);
         this->m_chi2_bin.resize(number_of_bin);
         this->m_accept_ratio_bin.resize(number_of_bin);
+        
         this->clear();
     }
 

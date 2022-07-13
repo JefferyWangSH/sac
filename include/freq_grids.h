@@ -29,7 +29,9 @@ namespace Grids {
         public:
 
             FreqGrids() = default;
-            FreqGrids( double freq_interval, double spec_interval, double freq_min, double freq_max );
+
+            void set_grids_params( double freq_interval, double spec_interval, 
+                                   double freq_min, double freq_max );
 
             void initial();
 

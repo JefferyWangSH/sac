@@ -20,26 +20,29 @@ namespace Grids { class FreqGrids; }
 
 
 namespace SAC {
-    
-    class SacCore;
 
-    // -------------------------------------  SAC::Kernel class  -----------------------------------------
+    // forward declaration
+    namespace Initializer { class QmcReader; }
+
+    // -----------------------------------------  SAC::Kernel class  --------------------------------------------
     class Kernel {
 
         private:
             int m_time_size{};                // dimension of time
             int m_freq_size{};                // dimension of (hyperfine) frequency
             Eigen::MatrixXd m_kernel{};       // kernel matrix
+            std::string m_kernel_type{};      // type of kernel, e.g. fermion and boson
 
         public:
 
             Kernel() = default;
-            Kernel( int time_size, int freq_size );
-            
+
+            // set up kernel parameters
+            void set_kernel_params( int time_size, int freq_size, const std::string& kernel_type="fermion" );
+
             // initialize the kernel object from time and frequency grids
-            void initial ( const SAC::SacCore& sac, 
-                           const Grids::FreqGrids& grids, 
-                           std::string_view kernel_type = "fermion" );
+            // todo: replace SacCore with QmcReader
+            void initial ( const Initializer::QmcReader& qmc_reader, const Grids::FreqGrids& grids );
 
             // rotate the kernel to the diagonal representation of the covariance matrix
             void rotate  ( const Eigen::MatrixXd& rotate_mat );

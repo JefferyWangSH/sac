@@ -1,6 +1,7 @@
 #include "sac_kernel.h"
-#include "sac.h"
+#include "qmc_reader.h"
 #include "freq_grids.h"
+#include <iostream>
 
 namespace SAC {
 
@@ -17,36 +18,45 @@ namespace SAC {
     // }
 
 
-    Kernel::Kernel( int time_size, int freq_size )
-    {
+    void Kernel::set_kernel_params( int time_size, int freq_size, const std::string& kernel_type )
+    {   
+        if ( kernel_type != "fermion" && kernel_type != "boson" ) {
+            std::cerr << "SAC::Kernel::set_kernel_params(): "
+                      << "undefined kernel type \'" << kernel_type 
+                      << "\' ( the default type of the kernel is \'fermion\' )." << std::endl;
+            exit(1);
+        }
+        else { this->m_kernel_type = kernel_type; }
+        
         this->m_time_size = time_size;
         this->m_freq_size = freq_size;
         this->m_kernel.resize(time_size, freq_size);
     }
 
 
-    void Kernel::initial( const SAC::SacCore& sac, 
-                          const Grids::FreqGrids& grids, 
-                          std::string_view kernel_type ) 
+    void Kernel::initial( const Initializer::QmcReader& qmc_reader, const Grids::FreqGrids& grids ) 
     {
-        assert( sac.tau_from_qmc.size() == this->m_time_size );
+        assert( qmc_reader.tgrids_qmc().size() == this->m_time_size );
         assert( grids.FreqNum() == this->m_freq_size );
 
         // kernel for fermionic green's functions
         // e.g. fermionic green's function  ->  usual fermionic spectral function
-        if ( kernel_type == "fermion" ) {
-            for (auto i = 0; i < grids.FreqNum(); ++i) {
+        if ( this->m_kernel_type == "fermion" ) {
+            for ( auto i = 0; i < grids.FreqNum(); ++i ) {
                 const double freq = grids.FreqIndex2Freq(i);
-                this->m_kernel.col(i) = (-freq*sac.tau_from_qmc.array()).exp() / (1.0 + exp(-sac.beta*freq));
+                this->m_kernel.col(i) = ( -freq * qmc_reader.tgrids_qmc().array() ).exp() 
+                                      / ( 1.0 + exp( -qmc_reader.beta() * freq ) );
             }
         }
 
         // kernel for bosonic green's functions
         // e.g. bosonic Matsubara correlation function ->  dynamic susceptibility
-        if ( kernel_type == "boson" ) {
-            for (auto i = 0; i < grids.FreqNum(); ++i) {
+        if ( this->m_kernel_type == "boson" ) {
+            for ( auto i = 0; i < grids.FreqNum(); ++i ) {
                 const double freq = grids.FreqIndex2Freq(i);
-                this->m_kernel.col(i) = ( (-freq*sac.tau_from_qmc.array()).exp() + (-freq*(sac.beta-sac.tau_from_qmc.array())).exp() ) / (1.0 + exp(-sac.beta*freq));
+                this->m_kernel.col(i) = ( ( -freq * qmc_reader.tgrids_qmc().array() ).exp() 
+                                        + ( -freq * ( qmc_reader.beta() - qmc_reader.tgrids_qmc().array() ) ).exp() ) 
+                                        / ( 1.0 + exp( -qmc_reader.beta() * freq ) );
             }
         }
     }
@@ -58,7 +68,7 @@ namespace SAC {
         assert( rotate_mat.cols() == this->m_time_size );
 
         this->m_kernel = rotate_mat * this->m_kernel;
-        // for (int i = 0; i < this->m_time_size; ++i) {
+        // for ( int i = 0; i < this->m_time_size; ++i ) {
         //     this->m_kernel.col(i) = rotate_mat * this->m_kernel.col(i);
         // }
     }

@@ -10,7 +10,8 @@ namespace Grids {
     int FreqGrids::SpecNum() const { return this->m_num_spec; }
 
 
-    FreqGrids::FreqGrids( double freq_interval, double spec_interval, double freq_min, double freq_max ) 
+    void FreqGrids::set_grids_params( double freq_interval, double spec_interval, 
+                                      double freq_min, double freq_max )
     {
         this->m_freq_interval = freq_interval;
         this->m_spec_interval = spec_interval;

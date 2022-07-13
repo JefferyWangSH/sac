@@ -102,7 +102,7 @@ namespace SAC::Initializer {
             exit(1);
         }
 
-        for (auto t = 0; t < this->m_time_num; ++t) {
+        for ( auto t = 0; t < this->m_time_num; ++t ) {
             getline(infile, line);
             boost::split(data, line, boost::is_any_of(" "), boost::token_compress_on);
             data.erase(std::remove(std::begin(data), std::end(data), ""), std::end(data));
@@ -145,9 +145,9 @@ namespace SAC::Initializer {
         this->m_bin_data_qmc = Eigen::MatrixXd::Zero(this->m_bin_num, this->m_time_num);
 
         // read and rebin the input data
-        for (auto bin = 0; bin < this->m_bin_num; ++bin) {
-            for (auto rebin = 0; rebin < this->m_rebin_pace; ++rebin) {
-                for (auto t = 0; t < this->m_time_num; ++t) {
+        for ( auto bin = 0; bin < this->m_bin_num; ++bin ) {
+            for ( auto rebin = 0; rebin < this->m_rebin_pace; ++rebin ) {
+                for ( auto t = 0; t < this->m_time_num; ++t ) {
                     getline(infile, line);
                     boost::split(data, line, boost::is_any_of(" "), boost::token_compress_on);
                     data.erase(std::remove(std::begin(data), std::end(data), ""), std::end(data));
@@ -166,7 +166,7 @@ namespace SAC::Initializer {
         this->m_corr_mean_qmc.setZero();
 
         // calculate the mean values of correlations
-        for (auto t = 0; t < this->m_time_num; ++t) {
+        for ( auto t = 0; t < this->m_time_num; ++t ) {
             this->m_corr_mean_qmc[t] = this->m_bin_data_qmc.col(t).sum() / this->m_bin_num;
         }
 
@@ -186,15 +186,15 @@ namespace SAC::Initializer {
         // first generate the bootstrap samples to compute the covariance matrix
         // `nbin` random selections out of the `nbin` number of bins
         std::uniform_int_distribution<> rand_bin(0, this->m_bin_num-1);
-        for (auto i = 0; i < this->m_bootstrap_num; ++i) {
-            for (auto bin = 0; bin < this->m_bin_num; bin++) {
+        for ( auto i = 0; i < this->m_bootstrap_num; ++i ) {
+            for ( auto bin = 0; bin < this->m_bin_num; bin++ ) {
                 this->m_bootstrap_samples.row(i) += this->m_bin_data_qmc.row( rand_bin(Utils::Random::Engine) );
             }
         }
         this->m_bootstrap_samples /= this->m_bin_num;
 
         // compute correlated errors of the input correlation functions
-        for (auto t = 0; t < this->m_time_num; ++t) {
+        for ( auto t = 0; t < this->m_time_num; ++t ) {
             this->m_corr_err_qmc[t] = ( this->m_bootstrap_samples.col(t).array() - this->m_corr_mean_qmc[t] ).square().sum();
         }
         this->m_corr_err_qmc = ( this->m_corr_err_qmc / this->m_bootstrap_num ).array().sqrt().matrix();
@@ -217,7 +217,7 @@ namespace SAC::Initializer {
 
         // exclude the static correlation G(t=0)
         // which serves as the normalization condition for the recovered spectrum
-        for (auto t = 1; t < this->m_time_num; ++t) {
+        for ( auto t = 1; t < this->m_time_num; ++t ) {
             if ( std::abs(this->m_corr_err_qmc[t] / this->m_corr_mean_qmc[t]) < 0.1) {
                 good_tgrids.push_back(t);
             }
@@ -250,8 +250,8 @@ namespace SAC::Initializer {
 
         // compute the covariance matrix
         // correlations data with `poor` quality should be discarded in advance
-        for (auto i = 0; i < this->m_cov_mat_dim; ++i) {
-            for (auto j = 0; j < this->m_cov_mat_dim; ++j) {
+        for ( auto i = 0; i < this->m_cov_mat_dim; ++i ) {
+            for ( auto j = 0; j < this->m_cov_mat_dim; ++j ) {
                 this->m_cov_mat(i, j) = ( (this->m_bootstrap_samples.col(i).array() - this->m_corr_mean_qmc[i])
                                         * (this->m_bootstrap_samples.col(j).array() - this->m_corr_mean_qmc[j]) ).sum();
             }

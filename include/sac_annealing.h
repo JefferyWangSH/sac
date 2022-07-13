@@ -17,32 +17,32 @@
 
 namespace SAC::Annealing {
     
-    // -----------------------------  SAC::Annealing::MetaData structure  --------------------------------
+    // ----------------------------------  SAC::Annealing::MetaData structure  -------------------------------------
     struct MetaData {
 
         double theta{};                         // sampling temperature
-        int ndelta{};                           // number of delta functions
-        int window_width{};                     // width of random move window
-        double amplitude{};                     // amplitude of delta functions
+        int window_width{};                     // width of the random move window
         double chi2{};                          // averaged fitting goodness chi2 at current sampling temperature
         Eigen::VectorXi locations{};            // locations of delta functions
     
     };
 
 
-    // --------------------------------  SAC::Annealing::Chain class  ------------------------------------
+    // --------------------------------------  SAC::Annealing::Chain class  ----------------------------------------
     class Chain {
         
         private:
             int m_length{};                     // length of the metadata chain
             int m_max_length{};                 // maximum length of the metadata chain
 
-            std::vector<MetaData> m_chain{};    // chain object
+            std::vector<MetaData> m_chain{};    // the chain object
 
         public:
 
             Chain() = default;
             Chain( int max_length );
+
+            void set_max_length( int max_length );
 
             // push back the metadata
             void push( const MetaData& data ); 

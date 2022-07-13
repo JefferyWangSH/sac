@@ -22,6 +22,14 @@ namespace SAC::Annealing {
     }
 
 
+    void Chain::set_max_length( int max_length )
+    {
+        this->m_max_length = max_length;
+        this->m_length = std::min(this->m_length, this->m_max_length);
+        this->m_chain.reserve(this->m_max_length);
+    }
+
+
     void Chain::push( const MetaData& data )
     {
         if ( this->m_length < this->m_max_length ) {
@@ -38,10 +46,10 @@ namespace SAC::Annealing {
 
     void Chain::clear()
     {
-        // simply set the length to zero
+        // clear the annealing history ( chain data )
         this->m_length = 0;
-        // this->chain.clear();
-        // this->chain.shrink_to_fit();
+        this->m_chain.clear();
+        this->m_chain.shrink_to_fit();
     }
 
 } // namespace SAC::Annealing
