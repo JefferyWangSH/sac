@@ -8,21 +8,38 @@
   *  recovered spectral functions and the quality report.
   */
 
+#include <string>
+
+// forward declaration
+namespace Grids { class FreqGrids; }
+
 
 namespace SAC {
 
-    // -------------------------------------  SAC::Writer class  ------------------------------------
+    // forward declarations
+    class SacCore;
+    class Measure;
+    namespace Annealing { class Chain; }
+    
+
+    // ----------------------------------------  SAC::Writer class  ------------------------------------------
     class Writer {
         
         public:
             
-            static void write_log();
+            static void write_log( const std::string& file, int n,
+                                   const SacCore& core,
+                                   const Grids::FreqGrids& grids,
+                                   const Measure& measure,
+                                   const Annealing::Chain& chain );
 
             static void write_spectrum();
 
             static void write_quality_report();
 
     };
+
+
 }
 
 #endif // SAC_WRITER_H

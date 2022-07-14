@@ -11,6 +11,11 @@
 namespace SAC {
 
     // interface member functions
+    int SacCore::TimeSize() const { return this->m_time_size; }
+    double SacCore::Theta() const { return this->m_metadata.theta; }
+    double SacCore::minChi2() const { return this->m_chi2_min; }
+    int SacCore::WindowWidth() const { return this->m_metadata.window_width; }
+
     const Eigen::VectorXd& SacCore::FrequencyGrids() const { return this->m_freq; }
     const Eigen::VectorXd& SacCore::RecoveredSpectrum() const { return this->m_spec; }
     
@@ -46,12 +51,13 @@ namespace SAC {
     }
 
 
-    void SacCore::set_annealing_params( double theta, double annealing_rate )
+    void SacCore::set_annealing_params( double theta, double annealing_rate, const std::string& log )
     {   
         assert( theta > 0.0 );
         assert( annealing_rate > 0.0 && annealing_rate < 1.0 );
         this->m_metadata.theta = theta;
         this->m_annealing_rate = annealing_rate;
+        this->m_log_file = log;
     }
 
 
@@ -334,7 +340,8 @@ namespace SAC {
 
     void SacCore::update_at_fixed_theta( const Kernel& kernel, 
                                          const Grids::FreqGrids& grids , 
-                                         Measure& measure )
+                                         Measure& measure,
+                                         const Annealing::Chain& chain )
     {
         // total Monte Carlo steps at a fixed sampling temperature: nbin * sbin
         for ( auto n = 0; n < measure.number_of_bin(); ++n ) {
@@ -352,8 +359,8 @@ namespace SAC {
             // average over samples in one bin, labeled by n
             measure.bin_analyse(n);
 
-            // // todo: write log
-            // Writer::write_log( );
+            // write log
+            Writer::write_log( this->m_log_file, n, *this, grids, measure, chain );
 
             // adjust the window width of the delta function moves
             // make sure that the averaged accepting ratio of random moves is around 0.5
@@ -377,7 +384,7 @@ namespace SAC {
         for ( auto i = 0; i < chain.max_length(); ++i ) {
 
             // Monte Carlo updates at the fixed temperature
-            this->update_at_fixed_theta( kernel, grids, measure );
+            this->update_at_fixed_theta( kernel, grids, measure, chain );
 
             // record simulating information for current sampling temperature
             measure.analyse();
@@ -385,9 +392,7 @@ namespace SAC {
             chain.push(this->m_metadata);
 
             // exit condition
-            if ( measure.chi2() - this->m_chi2_min < 1e-3 ) {
-                break;
-            }
+            if ( measure.chi2() - this->m_chi2_min < 1e-3 ) { break; }
 
             // lower down the sampling temperature
             this->m_metadata.theta *= this->m_annealing_rate;
@@ -413,10 +418,11 @@ namespace SAC {
 
     void SacCore::sample_and_collect( const Kernel& kernel, 
                                       const Grids::FreqGrids& grids , 
-                                      Measure& measure )
+                                      Measure& measure,
+                                      const Annealing::Chain& chain )
     {
         // reach equilibrium at the current sampling temperature
-        this->update_at_fixed_theta( kernel, grids, measure );
+        this->update_at_fixed_theta( kernel, grids, measure, chain );
 
         // generate frequency grids for the spectral functions
         for ( auto n = 0; n < grids.SpecNum(); ++n ) {

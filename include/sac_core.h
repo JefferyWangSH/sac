@@ -61,6 +61,7 @@ namespace SAC {
 
             std::string m_update_type{};          // modes of MC update (single or pair)
             std::string m_kernel_type{};          // type of the SAC kernel
+            std::string m_log_file;               // log output file
 
             // `Annealing::Metedata` class containing the basic data used for SAC updates and sampling
             // including:
@@ -84,7 +85,7 @@ namespace SAC {
                                       const std::string& update_type = "single" );
 
             // set up paramters for the control of the annealing process
-            void set_annealing_params( double theta, double annealing_rate );
+            void set_annealing_params( double theta, double annealing_rate, const std::string& log );
             
             // initialize SacCore from QmcReader module
             void initial( const Kernel& kernel, 
@@ -103,11 +104,17 @@ namespace SAC {
             void decide_sampling_theta( const Kernel& kernel, const Annealing::Chain& chain );
 
             // sampling and collecting the spectrum
-            void sample_and_collect( const Kernel& kernel, const Grids::FreqGrids& grids , Measure& measure );
+            void sample_and_collect( const Kernel& kernel, const Grids::FreqGrids& grids,
+                                     Measure& measure, const Annealing::Chain& chain );
 
 
             // ----------------------------------  Interface member functions  --------------------------------------
             
+            int TimeSize() const;
+            double Theta() const;
+            double minChi2() const;
+            int WindowWidth() const;
+
             const Eigen::VectorXd& FrequencyGrids()    const;
             const Eigen::VectorXd& RecoveredSpectrum() const;
             double FrequencyGrids( int i )    const;
@@ -135,7 +142,8 @@ namespace SAC {
 
             // perform MC updates at a fixed artificial temperature `theta`
             // till reaching the equilibrium state
-            void update_at_fixed_theta( const Kernel& kernel, const Grids::FreqGrids& grids , Measure& measure );
+            void update_at_fixed_theta( const Kernel& kernel, const Grids::FreqGrids& grids,
+                                        Measure& measure, const Annealing::Chain& chain );
 
     };
 
