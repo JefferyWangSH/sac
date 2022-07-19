@@ -20,9 +20,9 @@ namespace SAC {
     class SacCore;
     class Kernel;
     class Measure;
+    class QmcReader;
     namespace Annealing { class Chain; }
-    namespace Initializer { class QmcReader; }
-    
+
 
     // ----------------------------------------  SAC::Writer class  ------------------------------------------
     class Writer {
@@ -45,9 +45,9 @@ namespace SAC {
             // are written into the output file, together with their differences.
             static void write_quality_report  ( const std::string& file,
                                                 const SacCore& core,
-                                                const Grids::FreqGrids& grids,
                                                 const Kernel& kernel,
-                                                const Initializer::QmcReader& qmc_reader );
+                                                const Grids::FreqGrids& grids,
+                                                const QmcReader& qmc_reader );
 
     };
 

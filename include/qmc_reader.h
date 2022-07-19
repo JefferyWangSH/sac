@@ -1,9 +1,9 @@
-#ifndef SAC_INITIALIZER_QMC_READER_H
-#define SAC_INITIALIZER_QMC_READER_H
+#ifndef SAC_QMC_READER_H
+#define SAC_QMC_READER_H
 #pragma once
 
 /**
-  *  This header file defines the `SAC::Initializer::QmcReader` class, 
+  *  This header file defines the `SAC::QmcReader` class, 
   *  which serves as a interface class for the input of the QMC data.
   *  Features:
   *    1. read the imaginary-time dynamical correlation functions G(t),
@@ -19,9 +19,9 @@
 #include <Eigen/Core>
 
 
-namespace SAC::Initializer {
+namespace SAC {
 
-    // ---------------------------------------  SAC::Initializer::QmcReader class  --------------------------------------------
+    // ---------------------------------------  SAC::QmcReader class  --------------------------------------------
     class QmcReader {
 
         private:
@@ -104,6 +104,6 @@ namespace SAC::Initializer {
 
     };
 
-} // namespace SAC::Initializer
+} // namespace SAC
 
-#endif // SAC_INITIALIZER_QMC_READER_H
+#endif // SAC_QMC_READER_H

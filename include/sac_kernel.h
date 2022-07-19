@@ -22,7 +22,7 @@ namespace Grids { class FreqGrids; }
 namespace SAC {
 
     // forward declaration
-    namespace Initializer { class QmcReader; }
+    class QmcReader;
 
     // -----------------------------------------  SAC::Kernel class  --------------------------------------------
     class Kernel {
@@ -42,7 +42,7 @@ namespace SAC {
 
             // initialize the kernel object from time and frequency grids
             // todo: replace SacCore with QmcReader
-            void initial ( const Initializer::QmcReader& qmc_reader, const Grids::FreqGrids& grids );
+            void initial ( const QmcReader& qmc_reader, const Grids::FreqGrids& grids );
 
             // rotate the kernel to the diagonal representation of the covariance matrix
             void rotate  ( const Eigen::MatrixXd& rotate_mat );

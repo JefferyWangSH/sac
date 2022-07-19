@@ -76,9 +76,9 @@ namespace SAC {
 
     void Writer::write_quality_report( const std::string& file, 
                                        const SacCore& core, 
-                                       const Grids::FreqGrids& grids,
-                                       const Kernel& kernel, 
-                                       const Initializer::QmcReader& qmc_reader )
+                                       const Kernel& kernel,
+                                       const Grids::FreqGrids& grids, 
+                                       const QmcReader& qmc_reader )
     {
         std::ofstream outfile( file, std::ios::out|std::ios::trunc );
         if ( !outfile.is_open() ) {
