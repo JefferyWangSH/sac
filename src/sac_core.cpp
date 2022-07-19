@@ -15,7 +15,11 @@ namespace SAC {
     double SacCore::Theta() const { return this->m_metadata.theta; }
     double SacCore::minChi2() const { return this->m_chi2_min; }
     int SacCore::WindowWidth() const { return this->m_metadata.window_width; }
+    double SacCore::ScalingFactor() const { return this->m_scaling_factor; }
 
+    const Eigen::VectorXd& SacCore::tGridsQmc() const { return this->m_tgrids_qmc; }
+    const Eigen::VectorXd& SacCore::CorrQmc() const { return this->m_corr_qmc; }
+    const Eigen::VectorXd& SacCore::SigmaQmc() const { return this->m_sigma_qmc; }
     const Eigen::VectorXd& SacCore::FrequencyGrids() const { return this->m_freq; }
     const Eigen::VectorXd& SacCore::RecoveredSpectrum() const { return this->m_spec; }
     
