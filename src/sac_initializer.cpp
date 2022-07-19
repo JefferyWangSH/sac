@@ -5,7 +5,7 @@
 #include "sac_measure.h"
 #include "freq_grids.h"
 #include "qmc_reader.h"
-#include "toml.hpp"
+#include "utils/toml.hpp"
 
 namespace SAC {
 
@@ -20,7 +20,7 @@ namespace SAC {
         // parse the configuration file
         auto config = toml::parse_file( toml_config );
 
-        
+
 
     }
 

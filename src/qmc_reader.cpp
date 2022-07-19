@@ -1,6 +1,6 @@
 #include "qmc_reader.h"
-#include "linear_algebra.hpp"
 #include "random.h"
+#include "utils/linear_algebra.hpp"
 
 #include <fstream>
 #include <iostream>
