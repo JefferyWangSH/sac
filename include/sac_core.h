@@ -110,11 +110,15 @@ namespace SAC {
 
             // ----------------------------------  Interface member functions  --------------------------------------
             
-            int TimeSize()         const;
-            double Theta()         const;
-            double minChi2()       const;
-            int WindowWidth()      const;
-            double ScalingFactor() const;
+            int TimeSize()          const;
+            int WindowWidth()       const;
+            int StabilizationPace() const;
+            int NumDeltas()         const;
+            int CollectingSteps()   const;
+            double Theta()          const;
+            double minChi2()        const;
+            double ScalingFactor()  const;
+            double AnnealingRate()  const;
 
             const Eigen::VectorXd& tGridsQmc()         const;
             const Eigen::VectorXd& CorrQmc()           const;

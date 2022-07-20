@@ -12,10 +12,14 @@ namespace SAC {
 
     // interface member functions
     int SacCore::TimeSize() const { return this->m_time_size; }
+    int SacCore::WindowWidth() const { return this->m_metadata.window_width; }
+    int SacCore::StabilizationPace() const { return this->m_stabilization_pace; }
+    int SacCore::NumDeltas() const { return this->m_delta_num; }
+    int SacCore::CollectingSteps() const { return this->m_collecting_steps; }
     double SacCore::Theta() const { return this->m_metadata.theta; }
     double SacCore::minChi2() const { return this->m_chi2_min; }
-    int SacCore::WindowWidth() const { return this->m_metadata.window_width; }
     double SacCore::ScalingFactor() const { return this->m_scaling_factor; }
+    double SacCore::AnnealingRate() const { return this->m_annealing_rate; }
 
     const Eigen::VectorXd& SacCore::tGridsQmc() const { return this->m_tgrids_qmc; }
     const Eigen::VectorXd& SacCore::CorrQmc() const { return this->m_corr_qmc; }
