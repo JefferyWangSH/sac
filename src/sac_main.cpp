@@ -69,7 +69,7 @@ int main( int argc, char *argv[] ) {
         std::cerr << opts << std::endl;
         return 0;
     }
-    
+
 
     // ------------------------------------------------------------------------------------------------------------
     //                           Helping Variables and Functions to Organize the Program
@@ -106,10 +106,10 @@ int main( int argc, char *argv[] ) {
 
     // print current date and time
     auto current_time = boost::posix_time::second_clock::local_time();
-    std::cout << boost::format(" Current time : %s \n") % current_time << std::endl;
+    std::cout << boost::format(">> Current time : %s \n") % current_time << std::endl;
 
     begin_time = std::chrono::steady_clock::now();
-    std::cout << " Initialization starts. ( Preprocessing of input QMC correlations ) \n" << std::endl;
+    std::cout << ">> Initialization starts. ( Preprocessing of the input QMC correlations )\n" << std::endl;
 
 
     // ---------------------------------  Initialize the QmcReader module  ----------------------------------------
@@ -183,50 +183,50 @@ int main( int argc, char *argv[] ) {
 
     end_time = std::chrono::steady_clock::now();
     seconds = (double)std::chrono::duration_cast<std::chrono::milliseconds>( end_time - begin_time ).count() / 1000;
-    std::cout << boost::format(" Initialization finished in %s. \n") % StandardTimeOutput(seconds) << std::endl;
+    std::cout << boost::format(">> Initialization finished in %s.\n") % StandardTimeOutput( seconds ) << std::endl;
 
     // output formats
-    boost::format fmt_str("%| 42s|%| 5s|%| 18s|");
-    boost::format fmt_int("%| 42s|%| 5s|%| 18d|");
-    boost::format fmt_double("%| 42s|%| 5s|%| 18.2f|");
-    boost::format fmt_science("%| 42s|%| 5s|%| 18.2e|");
-    boost::format fmt_range("%| 42s|%| 5s|%| 10.2f|,%| 7.2f|");
+    boost::format fmt_str     ( "%| 40s|%| 7s|%| 16s|" );
+    boost::format fmt_int     ( "%| 40s|%| 7s|%| 16d|" );
+    boost::format fmt_double  ( "%| 40s|%| 7s|%| 16.2f|" );
+    boost::format fmt_sci     ( "%| 40s|%| 7s|%| 16.2e|" );
+    boost::format fmt_range   ( "%| 40s|%| 7s|%| 9.2f|,%| 6.2f|" );
     const std::string& joiner = "->";
-    std::cout << " Annealing starts with the following parameters :\n" << std::endl;
+    std::cout << ">> The annealing starts with the following parameters :\n" << std::endl;
 
-    std::cout << fmt_int % "Number of tau points in QMC 'lt'" % joiner % qmc_reader->time_num() << std::endl;
-    std::cout << fmt_double % "Inverse temperature in QMC 'beta'" % joiner % qmc_reader->beta() << std::endl;
-    std::cout << fmt_int % "Number of bins in QMC 'nbin-qmc'" % joiner % qmc_reader->bin_num_total() << std::endl;
-    std::cout << fmt_int % "Rebin pace of QMC bin data 'rebin_pace'" % joiner % qmc_reader->rebin_pace() << std::endl;
-    std::cout << fmt_int % "Number of bootstrap samples 'nbootstrap'" % joiner % qmc_reader->bootstrap_num() << std::endl << std::endl;
+    std::cout << fmt_int % "Number of QMC img-time points" % joiner % qmc_reader->time_num() << std::endl;
+    std::cout << fmt_double % "Inverse temperature" % joiner % qmc_reader->beta() << std::endl;
+    std::cout << fmt_int % "Number of QMC bins" % joiner % qmc_reader->bin_num_total() << std::endl;
+    std::cout << fmt_int % "Pace of re-bin for the QMC data" % joiner % qmc_reader->rebin_pace() << std::endl;
+    std::cout << fmt_int % "Number of bootstrap samples" % joiner % qmc_reader->bootstrap_num() << std::endl << std::endl;
     
-    std::cout << fmt_str % "Type of kernel 'kernel_type'" % joiner % kernel_type << std::endl;
-    std::cout << fmt_str % "Type of MC updates 'update_type'" % joiner % update_type << std::endl << std::endl;
+    std::cout << fmt_str % "Type of the SAC kernel" % joiner % kernel_type << std::endl;
+    std::cout << fmt_str % "Type of the MC updates" % joiner % update_type << std::endl << std::endl;
     
-    std::cout << fmt_int % "Number of tau points (truncated) 'nt'" % joiner % core->TimeSize() << std::endl;
-    std::cout << fmt_science % "Initial sampling temperature 'theta'" % joiner % core->Theta() << std::endl;
-    std::cout << fmt_double % "Annealing rate 'annealing_pace'" % joiner % core->AnnealingRate() << std::endl;
-    std::cout << fmt_double % "Stablization rate 'stablization_pace'" % joiner % core->StabilizationPace() << std::endl;
-    std::cout << fmt_int % "Number of delta functions 'ndelta'" % joiner % core->NumDeltas() << std::endl;
-    std::cout << fmt_int % "Number of meausring bins 'nbin-sac'" % joiner % measure->number_of_bin() << std::endl;
-    std::cout << fmt_int % "Capacity of a measuring bin 'sbin-sac'" % joiner % measure->size_of_bin() << std::endl;
-    std::cout << fmt_int % "Number of spec samples 'collecting_steps'" % joiner % core->CollectingSteps() << std::endl << std::endl;
+    std::cout << fmt_int % "Number of img-time points (truncated)" % joiner % core->TimeSize() << std::endl;
+    std::cout << fmt_sci % "Initial sampling temperature 'theta'" % joiner % core->Theta() << std::endl;
+    std::cout << fmt_double % "Annealing rate" % joiner % core->AnnealingRate() << std::endl;
+    std::cout << fmt_double % "Pace of numerical stabilization" % joiner % core->StabilizationPace() << std::endl;
+    std::cout << fmt_int % "Number of delta functions" % joiner % core->NumDeltas() << std::endl;
+    std::cout << fmt_int % "Number of SAC bins" % joiner % measure->number_of_bin() << std::endl;
+    std::cout << fmt_int % "Number of samples in one SAC bin" % joiner % measure->size_of_bin() << std::endl;
+    std::cout << fmt_int % "MC steps to collect the spectrum" % joiner % core->CollectingSteps() << std::endl << std::endl;
     
-    std::cout << fmt_science % "Interval of fine grids 'freq_interval'" % joiner % grids->FreqInterval() << std::endl;
-    std::cout << fmt_science % "Interval of spectrum 'spec_interval'" % joiner % grids->SpecInterval() << std::endl;
-    std::cout << fmt_range % "Frequency range of spectrum 'freq'" % joiner 
-                           % grids->FreqIndex2Freq(0) % grids->FreqIndex2Freq( grids->FreqNum()-1 ) << std::endl;
+    std::cout << fmt_sci % "Interval of the hyperfine grids" % joiner % grids->FreqInterval() << std::endl;
+    std::cout << fmt_sci % "Interval of the spectral grids" % joiner % grids->SpecInterval() << std::endl;
+    std::cout << fmt_range % "Frequency range of the spectrum" % joiner 
+                           % grids->FreqIndex2Freq(0) % grids->FreqIndex2Freq( grids->FreqNum() - 1 ) << std::endl;
 
 
     // ------------------------------------------------------------------------------------------------------------
     //                                         Perform SAC Simulations
     // ------------------------------------------------------------------------------------------------------------
     
-    std::cout << "\n Annealing process ... \n" << std::endl;
-    std::cout << boost::format(" Log information of annealing written into %s ... \n") % log_file << std::endl;
+    std::cout << "\n>> Annealing process ... \n" << std::endl;
+    std::cout << boost::format(">> The log info will be written into \'%s\'.\n") % log_file << std::endl;
     begin_time = std::chrono::steady_clock::now();
 
-    // annealing process
+    // simulated annealing process
     core->perform_annealing( *kernel, *grids, *measure, *chain );
 
     // decide the sampling temperature
@@ -234,24 +234,24 @@ int main( int argc, char *argv[] ) {
 
     end_time = std::chrono::steady_clock::now();
     seconds = (double)std::chrono::duration_cast<std::chrono::milliseconds>( end_time - begin_time ).count()/1000;
-    std::cout << boost::format(" Annealing finished in %s. \n") % StandardTimeOutput(seconds) << std::endl;
+    std::cout << boost::format(">> The annealing finished in %s.\n") % StandardTimeOutput( seconds ) << std::endl;
 
     begin_time = std::chrono::steady_clock::now();
-    std::cout << " Start collecting spectrum ... \n" << std::endl;
+    std::cout << ">> Start collecting the spectral functions ...\n" << std::endl;
 
-    // sampling and collecting
+    // sampling and collecting the spetrum
     core->sample_and_collect( *kernel, *grids, *measure, *chain );
 
-    // output collected spectrum
+    // output the collected spectrum
     SAC::Writer::write_spectrum( spec_file, *core );
 
     end_time = std::chrono::steady_clock::now();
     seconds = (double)std::chrono::duration_cast<std::chrono::milliseconds>( end_time - begin_time ).count()/1000;
-    std::cout << boost::format(" Accumulated spectrum stored in %s , costing %s. \n") % spec_file % StandardTimeOutput(seconds) << std::endl;
+    std::cout << boost::format(">> The accumulated spectrum stored in \'%s\', costing %s.\n") % spec_file % StandardTimeOutput( seconds ) << std::endl;
 
-    // output report of recovery quality
+    // output the quality report of the SAC recovery 
     SAC::Writer::write_quality_report( report_file, *core, *kernel, *grids, *qmc_reader );
-    std::cout << boost::format(" Quality report of recovered spectrum stored in %s . \n") % report_file << std::endl;
+    std::cout << boost::format(">> The quality report of the recovered spectrum stored in \'%s\'.\n") % report_file << std::endl;
 
 
     // memory release
