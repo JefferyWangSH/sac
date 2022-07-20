@@ -19,21 +19,57 @@
 #include <boost/date_time/posix_time/posix_time.hpp>
 
 
-int main() {
+int main( int argc, char *argv[] ) {
 
 
     // -------------------------------------------------------------------------------------------------------------
     //                              Read Input and Output Files from Prigram Options
     // -------------------------------------------------------------------------------------------------------------
 
-    // files, read from program options
-    std::string config_file = "../config.toml";
-    std::string tgrids_file = "../benchmark/tgrids.dat";
-    std::string corr_file = "../benchmark/corr.dat";
-    std::string log_file = "../log.out";
-    std::string spec_file = "../spec.out";
-    std::string report_file = "../report.out";
+    // input and output files, read from program options
+    std::string config_file = "../benchmark/config.toml";
+    std::string tgrids_file = "../benchmark/tgrids.in";
+    std::string corr_file = "../benchmark/corr.in";
+    std::string log_file = "../benchmark/log.out";
+    std::string spec_file = "../benchmark/spec.out";
+    std::string report_file = "../benchmark/report.out";
 
+    // read params from command line
+    boost::program_options::options_description opts( "Program options" );
+    boost::program_options::variables_map vm;
+
+    opts.add_options()
+        ( "help,h", "display this information" )
+
+        ( "config", boost::program_options::value<std::string>( &config_file )->default_value( "../benchmark/config.toml" ),
+                "toml configuration file for SAC, default: ../benchmark/config.toml" )
+        ( "tgrids", boost::program_options::value<std::string>( &tgrids_file )->default_value( "../benchmark/tgrids.in" ),
+                "input file which contains the QMC imaginary-time grids, default: ../benchmark/tgrids.in" )
+        ( "corr", boost::program_options::value<std::string>( &corr_file )->default_value( "../benchmark/corr.in" ),
+                "input file which contains the QMC correlation functions, default: ../benchmark/corr.in" )
+        ( "log", boost::program_options::value<std::string>( &log_file )->default_value( "../benchmark/log.out" ),
+                "log file which records the history of the simulated annealing in SAC, default: ../benchmark/log.out" )
+        ( "spec", boost::program_options::value<std::string>( &spec_file )->default_value( "../benchmark/spec.out" ),
+                "output file which contains the recovered spectral functions, default: ../benchmark/spec.out" )
+        ( "report", boost::program_options::value<std::string>( &report_file )->default_value( "../benchmark/report.out" ),
+                "output file which contains the quality report of SAC, default: ../benchmark/report.out" );
+
+    try {
+        boost::program_options::store( parse_command_line(argc, argv, opts), vm );
+    }
+    catch ( ... ) {
+        std::cerr << "main(): undefined program options got from the command line." << std::endl;
+        exit(1);
+    }
+    boost::program_options::notify( vm );
+
+    // show the helping message
+    if ( vm.count( "help" )) {
+        std::cerr << argv[0] << std::endl;
+        std::cerr << opts << std::endl;
+        return 0;
+    }
+    
 
     // ------------------------------------------------------------------------------------------------------------
     //                           Helping Variables and Functions to Organize the Program
