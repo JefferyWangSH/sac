@@ -66,7 +66,7 @@ namespace SAC {
 
 
     void SacCore::initial( const Kernel& kernel, 
-                           const QmcReader& qmc_reader, 
+                           const Initializer::QmcReader& qmc_reader, 
                            const Grids::FreqGrids& grids )
     {
         // ensure that the QmcReader and FreqGrids classes have been initialized before

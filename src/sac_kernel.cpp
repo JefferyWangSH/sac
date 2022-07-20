@@ -34,7 +34,7 @@ namespace SAC {
     }
 
 
-    void Kernel::initial( const QmcReader& qmc_reader, const Grids::FreqGrids& grids ) 
+    void Kernel::initial( const Initializer::QmcReader& qmc_reader, const Grids::FreqGrids& grids ) 
     {
         assert( qmc_reader.tgrids_qmc().size() == this->m_time_size );
         assert( grids.FreqNum() == this->m_freq_size );

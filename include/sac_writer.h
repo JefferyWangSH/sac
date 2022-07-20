@@ -20,8 +20,8 @@ namespace SAC {
     class SacCore;
     class Kernel;
     class Measure;
-    class QmcReader;
     namespace Annealing { class Chain; }
+    namespace Initializer { class QmcReader; }
 
 
     // ----------------------------------------  SAC::Writer class  ------------------------------------------
@@ -47,7 +47,7 @@ namespace SAC {
                                                 const SacCore& core,
                                                 const Kernel& kernel,
                                                 const Grids::FreqGrids& grids,
-                                                const QmcReader& qmc_reader );
+                                                const Initializer::QmcReader& qmc_reader );
 
     };
 

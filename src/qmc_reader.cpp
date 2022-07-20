@@ -10,7 +10,7 @@
 #include <boost/lexical_cast.hpp>
 
 
-namespace SAC {
+namespace SAC::Initializer {
 
     // interface memeber functions
     int QmcReader::time_num() const { return this->m_time_num; }
@@ -284,4 +284,4 @@ namespace SAC {
         // this->m_rotate_mat = u.transpose();
     }
 
-} // namespace SAC
+} // namespace SAC::Initializer

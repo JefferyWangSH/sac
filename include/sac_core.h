@@ -26,7 +26,7 @@ namespace SAC {
     // forward declarations
     class Kernel;
     class Measure;
-    class QmcReader; 
+    namespace Initializer { class QmcReader; } 
 
     // -------------------------------------------  SAC::SacCore class  ----------------------------------------------
     class SacCore {
@@ -89,7 +89,7 @@ namespace SAC {
             
             // initialize SacCore from QmcReader module
             void initial( const Kernel& kernel, 
-                          const QmcReader& qmc_reader, 
+                          const Initializer::QmcReader& qmc_reader, 
                           const Grids::FreqGrids& grids );
 
             

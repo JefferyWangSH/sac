@@ -15,16 +15,16 @@
 #define EIGEN_VECTORIZE_SSE4_2
 #include <Eigen/Core>
 
+
 // forward declaration
 namespace Grids { class FreqGrids; }
-
 
 namespace SAC {
 
     // forward declaration
-    class QmcReader;
+    namespace Initializer { class QmcReader; }
 
-    // -----------------------------------------  SAC::Kernel class  --------------------------------------------
+    // ------------------------------------------  SAC::Kernel class  ---------------------------------------------
     class Kernel {
 
         private:
@@ -42,7 +42,7 @@ namespace SAC {
 
             // initialize the kernel object from time and frequency grids
             // todo: replace SacCore with QmcReader
-            void initial ( const QmcReader& qmc_reader, const Grids::FreqGrids& grids );
+            void initial ( const Initializer::QmcReader& qmc_reader, const Grids::FreqGrids& grids );
 
             // rotate the kernel to the diagonal representation of the covariance matrix
             void rotate  ( const Eigen::MatrixXd& rotate_mat );
