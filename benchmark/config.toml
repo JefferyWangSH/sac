@@ -20,16 +20,16 @@
     [SAC.FreqGrids]
         freq_interval = 1e-5                # interval of hyperfine grids
         spec_interval = 1e-2                # interval of spectral grids
-        freq_min = -8.0                     # minimum of the frequency domain
-        freq_max = +8.0                     # maximum of the frequency domain
+        freq_min = -10.0                    # minimum of the frequency domain
+        freq_max = +10.0                    # maximum of the frequency domain
 
     [SAC.Measure]
         number_of_bins = 5                  # number of bins for the measurments during the annealing process
-        size_of_bin = 1e3                   # size ( number of samples ) of perticular one bin during the annealing process
+        size_of_bin = 4e3                   # size ( number of samples ) of perticular one bin during the annealing process
         collecting_steps = 1e5              # number of samples for the collection of the recovered spectral functions
 
     [SAC.Annealing]
-        theta = 1e8                         # initial sampling temperature
+        theta = 1e6                         # initial sampling temperature
         number_of_deltas = 1e3              # number of delta functions
         annealing_rate = 0.9                # decay rate of the annealing
         max_annealing_steps = 5e3           # maximum of the annealing steps

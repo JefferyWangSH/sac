@@ -1,0 +1,42 @@
+>> Current time : 2022-Jul-21 14:11:19 
+
+>> Initialization starts. ( Preprocessing of the input QMC correlations )
+
+>> Initialization finished in 5.03 s.
+
+>> The annealing starts with the following parameters :
+
+           Number of QMC img-time points     ->             160
+                     Inverse temperature     ->            8.00
+                      Number of QMC bins     ->            1000
+         Pace of re-bin for the QMC data     ->               1
+             Number of bootstrap samples     ->            5000
+
+                  Type of the SAC kernel     ->         fermion
+                  Type of the MC updates     ->          single
+
+   Number of img-time points (truncated)     ->             159
+    Initial sampling temperature 'theta'     ->        1.00e+06
+                          Annealing rate     ->            0.90
+         Pace of numerical stabilization     ->              10
+               Number of delta functions     ->            1000
+                      Number of SAC bins     ->               5
+        Number of samples in one SAC bin     ->            4000
+        MC steps to collect the spectrum     ->          100000
+
+         Interval of the hyperfine grids     ->        1.00e-05
+          Interval of the spectral grids     ->        1.00e-02
+         Frequency range of the spectrum     ->   -10.00, 10.00
+
+>> Annealing process ... 
+
+>> The log info will be written into '../benchmark/log.out'.
+
+>> The annealing finished in 31 m 41.83 s.
+
+>> Start collecting the spectral functions ...
+
+>> The accumulated spectrum stored in '../benchmark/spec.out', costing 48.70 s.
+
+>> The quality report of the recovered spectrum stored in '../benchmark/report.out'.
+

@@ -5,10 +5,10 @@ from matplotlib import pyplot as plt
 if "__main__":
     
     ###############################################################
-    ##          Read spectral functions from file
+    ##              Read spectral functions from file
     ###############################################################
-    exact_spec_path = "data/exact_spec.dat"
-    sac_spec_path = "../output/benchmark/spec.dat"
+    exact_spec_path = "./data/exact_spec.dat"
+    sac_spec_path = "../spec.out"
 
     exact_data = np.loadtxt(fname=exact_spec_path, dtype=float, skiprows=(0), usecols=(1,2))
     sac_data = np.loadtxt(fname=sac_spec_path, dtype=float, skiprows=(0), usecols=(1,2))
@@ -17,7 +17,7 @@ if "__main__":
     
 
     ###############################################################
-    ##          Plot the benchmark results
+    ##               Plot the benchmark results
     ###############################################################
 
     # font convention
