@@ -28,10 +28,12 @@ namespace SAC {
     class Kernel {
 
         private:
+
             int m_time_size{};                // dimension of time
             int m_freq_size{};                // dimension of (hyperfine) frequency
             Eigen::MatrixXd m_kernel{};       // kernel matrix
             std::string m_kernel_type{};      // type of kernel, e.g. fermion and boson
+
 
         public:
 
@@ -42,16 +44,19 @@ namespace SAC {
 
             // initialize the kernel object from time and frequency grids
             // todo: replace SacCore with QmcReader
-            void initial ( const Initializer::QmcReader& qmc_reader, const Grids::FreqGrids& grids );
-
-            // rotate the kernel to the diagonal representation of the covariance matrix
-            void rotate  ( const Eigen::MatrixXd& rotate_mat );
+            void initial( const Initializer::QmcReader& qmc_reader, const Grids::FreqGrids& grids );
 
             // interface member functions
             int time_size() const;
             int freq_size() const;
             const Eigen::MatrixXd& kernel()  const;
             // double kernel( int t, int freq ) const;
+
+
+        private:
+
+            // rotate the kernel to the diagonal representation of the covariance matrix
+            void rotate( const Eigen::MatrixXd& rotate_mat );
 
     };
 

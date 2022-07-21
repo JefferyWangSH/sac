@@ -412,7 +412,7 @@ namespace SAC {
     {
         // determine the sampling temperature after the annealing process
         // by slightly raising the artificial temperature `theta` to avoid overfitting
-        for ( auto i = chain.length(); i >= 0; --i ) {
+        for ( auto i = chain.length() - 1; i >= 0; --i ) {
             // raise chi2 by a standard deviation with respect to its minimum
             if ( chain.chain(i).chi2 > this->m_chi2_min + 2.0 * std::sqrt(this->m_chi2_min) ) {
                 this->m_metadata = chain.chain(i);

@@ -59,6 +59,9 @@ namespace SAC {
                                         / ( 1.0 + exp( -qmc_reader.beta() * freq ) );
             }
         }
+
+        // rotate to the diagonal representation of the QMC correlation functions
+        this->rotate( qmc_reader.rotate_mat() );
     }
 
 

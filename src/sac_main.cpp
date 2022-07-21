@@ -95,7 +95,7 @@ int main( int argc, char *argv[] ) {
     };
 
     // // set up random seeds for the Monte Carlo simulation
-    // // fixed seed for debug
+    // // fix random seeds for the debug usage
     // Utils::Random::set_seed( 12345 );
     // Utils::Random::set_seed( time(nullptr) );
 
@@ -125,7 +125,7 @@ int main( int argc, char *argv[] ) {
     qmc_reader->read_tgrids_from_file( tgrids_file );
     qmc_reader->read_corr_from_file( corr_file );
     
-    // transform the data into the diagonal space of the QMC orrelation functions
+    // transform the data into the diagonal space of the QMC correlation functions
     qmc_reader->analyse_corr();
     qmc_reader->filter_and_rotate();
 
@@ -152,7 +152,7 @@ int main( int argc, char *argv[] ) {
     // -----------------------------------  Initialize the Measure module  ----------------------------------------
 
     const int num_bin_sac = config["SAC"]["Measure"]["number_of_bins"].value_or(5);
-    const int size_bin_sac = config["SAC"]["Measure"]["size_of_bins"].value_or(1e3);
+    const int size_bin_sac = config["SAC"]["Measure"]["size_of_bin"].value_or(4e3);
     SAC::Measure* measure = new SAC::Measure();
     measure->resize( num_bin_sac, size_bin_sac );
 
