@@ -273,6 +273,8 @@ namespace SAC::Initializer {
         this->compute_cov_matrix();
 
         // diagonalize the covariance matrix
+        // note that a reliable diagonalization of the covariance matrix requires more than nt bins
+
         // for a real symmetric matrix, this exists an orthogonal transformation T satisfying
         //   T * C * T^dagger -> diagonal space
         // where T is the orthogonal rotation matrix.

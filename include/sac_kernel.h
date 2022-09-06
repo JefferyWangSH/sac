@@ -49,8 +49,11 @@ namespace SAC {
             // interface member functions
             int time_size() const;
             int freq_size() const;
-            const Eigen::MatrixXd& kernel()  const;
+            const Eigen::MatrixXd& kernel() const;
             // double kernel( int t, int freq ) const;
+
+            bool NeedManualNormalize() const;
+            bool OnlyUsePositiveFreqDomain() const;
 
 
         private:

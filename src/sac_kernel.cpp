@@ -17,6 +17,9 @@ namespace SAC {
     //     return this->m_kernel(t, freq);
     // }
 
+    bool Kernel::NeedManualNormalize() const { return ( this->m_kernel_type == "boson" ); }
+    bool Kernel::OnlyUsePositiveFreqDomain() const { return ( this->m_kernel_type == "boson" ); }
+
 
     void Kernel::set_kernel_params( int time_size, int freq_size, const std::string& kernel_type )
     {   
@@ -41,6 +44,11 @@ namespace SAC {
 
         // kernel for fermionic green's functions
         // e.g. fermionic green's function  ->  usual fermionic spectral function
+        //
+        //      G(t) = int_omega{-inf}{+inf}  exp( -omega * t ) / ( 1 + exp( -omega * beta ) ) * A( omega )
+        //
+        // where A( omega ) is positive definite and satisfies the sum rule sum_omega A = 1
+
         if ( this->m_kernel_type == "fermion" ) {
             for ( auto i = 0; i < grids.FreqNum(); ++i ) {
                 const double freq = grids.FreqIndex2Freq(i);
@@ -49,14 +57,18 @@ namespace SAC {
             }
         }
 
-        // kernel for bosonic green's functions
-        // e.g. bosonic Matsubara correlation function ->  dynamic susceptibility
+        // kernel for bosonic correlation functions
+        // e.g. dynamic spin structure factor ( susceptibility )
+        // 
+        //      G(t) = int_omega{0}{+inf}  exp( -omega * t ) * B( omega )
+        // 
+        // where B( omega ) is positive definite in (0, +inf) and B( -omega ) = exp( -beta*omega ) B( omega ) 
+        // the sum rule is guaranteed by rescaling G(t=0) = 1
+
         if ( this->m_kernel_type == "boson" ) {
             for ( auto i = 0; i < grids.FreqNum(); ++i ) {
                 const double freq = grids.FreqIndex2Freq(i);
-                this->m_kernel.col(i) = ( ( -freq * qmc_reader.tgrids_qmc().array() ).exp() 
-                                        + ( -freq * ( qmc_reader.beta() - qmc_reader.tgrids_qmc().array() ) ).exp() ) 
-                                        / ( 1.0 + exp( -qmc_reader.beta() * freq ) );
+                this->m_kernel.col(i) = ( -freq * qmc_reader.tgrids_qmc().array() ).exp();
             }
         }
 

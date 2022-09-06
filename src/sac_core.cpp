@@ -74,7 +74,14 @@ namespace SAC {
                            const Grids::FreqGrids& grids )
     {
         // ensure that the QmcReader and FreqGrids classes have been initialized before
-        
+        // check the validity of parameters
+        if ( kernel.OnlyUsePositiveFreqDomain() && grids.FreqIndex2Freq(0) != 0.0 ) {
+            std::cerr << "SAC::SacCore::initial: "
+                      << "input frequency domain incompatible with the kernel type." << std::endl; 
+            exit(1); 
+        }
+
+
         // -----------------------------------------------------------------------------------------
         //                               Initialize from QmcReader
         // -----------------------------------------------------------------------------------------
@@ -102,7 +109,7 @@ namespace SAC {
         // e.g. randomly distributed
         std::uniform_int_distribution<> rand_delta(0, grids.FreqNum()-1);
         for ( auto i = 0; i < this->m_delta_num; ++i ) {
-            this->m_metadata.locations(i) = rand_delta(Utils::Random::Engine);
+            this->m_metadata.locations(i) = rand_delta( Utils::Random::Engine );
         }
 
         // // delta-like distribution
@@ -127,11 +134,16 @@ namespace SAC {
         // ------------------  Initialize amplitudes of the delta functions  -----------------------
         
         // all delta functions share the equal amplitude
-        // the factor 1.0 comes from the normalization of spectral functions,
-        // which is guaranteed by scaling the correlations such that G(t=0) = 1.0
-        // todo: extend to arbitrary normalization factor ( maybe not necessary )
-        this->m_delta_amplitude = 1.0 / (this->m_scaling_factor * this->m_delta_num);
-
+        // the factor 1.0 comes from the normalization of spectral functions:
+        // for fermionic systems, this is an intrinsic property of spectral functions;
+        // while for bosonic systems, this is guaranteed by scaling the correlations such that G(t=0) = 1.0
+        if ( kernel.NeedManualNormalize() ) {
+            this->m_delta_amplitude = 1.0 / this->m_delta_num; 
+        }
+        else {
+            this->m_delta_amplitude = 1.0 / (this->m_scaling_factor * this->m_delta_num);
+        }
+        
         // --------------  Initialize the window width of delta function moves  --------------------
 
         // todo: 1/10 of average frequency ?
@@ -205,13 +217,13 @@ namespace SAC {
         // attempt to move the delta functions for `delta_num` times
         for ( auto i = 0; i < this->m_delta_num; ++i ) {
             // select one delta function randomly
-            select_delta = rand_delta(Utils::Random::Engine);
+            select_delta = rand_delta( Utils::Random::Engine );
             location_now = this->m_metadata.locations[select_delta];
 
             if ( this->m_metadata.window_width > 0 && this->m_metadata.window_width < grids.FreqNum() ) {
                 // move the selected delta function randomly within the window
-                move_width = rand_width(Utils::Random::Engine);
-                if ( std::bernoulli_distribution(0.5)(Utils::Random::Engine) ) {
+                move_width = rand_width( Utils::Random::Engine );
+                if ( std::bernoulli_distribution(0.5)( Utils::Random::Engine ) ) {
                     // move to right
                     location_next = location_now + move_width;
                 }
@@ -228,7 +240,7 @@ namespace SAC {
             }
             else if ( this->m_metadata.window_width == grids.FreqNum() ) {
                 // randomly move over the frequency domain
-                location_next = rand_location(Utils::Random::Engine);
+                location_next = rand_location( Utils::Random::Engine );
             }
             else {
                 std::cerr << "SAC::SacCore::update_deltas_1step_single(): "
@@ -244,7 +256,7 @@ namespace SAC {
             chi2_next = this->compute_goodness( this->m_corr_next );
             p = exp( ( this->m_chi2 - chi2_next ) / ( 2.0 * this->m_metadata.theta ) );
 
-            if ( std::bernoulli_distribution(std::min(p,1.0))(Utils::Random::Engine) ) {
+            if ( std::bernoulli_distribution(std::min(p,1.0))( Utils::Random::Engine ) ) {
                 // accept the new configurations
                 this->m_metadata.locations[select_delta] = location_next;
                 this->m_corr_now = this->m_corr_next;
@@ -281,19 +293,19 @@ namespace SAC {
         // attempt to move pair of delta functions for `delta_num/2` times
         for ( auto i = 0; i < std::ceil(this->m_delta_num/2); i++ ) {
             // select two different delta functions randomly
-            select_delta1 = rand_delta(Utils::Random::Engine);
+            select_delta1 = rand_delta( Utils::Random::Engine );
             select_delta2 = select_delta1;
             while ( select_delta1 == select_delta2 ) {
-                select_delta2 = rand_delta(Utils::Random::Engine);
+                select_delta2 = rand_delta( Utils::Random::Engine );
             }
             location_now1 = this->m_metadata.locations[select_delta1];
             location_now2 = this->m_metadata.locations[select_delta2];
 
             if ( this->m_metadata.window_width > 0 && this->m_metadata.window_width < grids.FreqNum() ) {
                 // randomly choose a window width for the delta function moves
-                move_width1 = rand_width(Utils::Random::Engine);
-                move_width2 = rand_width(Utils::Random::Engine);
-                if ( std::bernoulli_distribution(0.5)(Utils::Random::Engine) ) {
+                move_width1 = rand_width( Utils::Random::Engine );
+                move_width2 = rand_width( Utils::Random::Engine );
+                if ( std::bernoulli_distribution(0.5)( Utils::Random::Engine ) ) {
                     location_next1 = location_now1 + move_width1;
                     location_next2 = location_now2 - move_width2;
                 }
@@ -312,8 +324,8 @@ namespace SAC {
             }
             else if (this->m_metadata.window_width == grids.FreqNum()) {
                 // randomly move over the frequency domain
-                location_next1 = rand_location(Utils::Random::Engine);
-                location_next2 = rand_location(Utils::Random::Engine);
+                location_next1 = rand_location( Utils::Random::Engine );
+                location_next2 = rand_location( Utils::Random::Engine );
             }
             else {
                 std::cerr << "SAC::SacCore::update_deltas_1step_pair(): "
@@ -330,7 +342,7 @@ namespace SAC {
             chi2_next = this->compute_goodness( this->m_corr_next );
             p = exp( ( this->m_chi2 - chi2_next ) / ( 2.0 * this->m_metadata.theta ) );
 
-            if ( std::bernoulli_distribution(std::min(p,1.0))(Utils::Random::Engine) ) {
+            if ( std::bernoulli_distribution(std::min(p,1.0))( Utils::Random::Engine ) ) {
                 // accept the new configurations
                 this->m_metadata.locations[select_delta1] = location_next1;
                 this->m_metadata.locations[select_delta2] = location_next2;
