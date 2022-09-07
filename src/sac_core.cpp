@@ -466,7 +466,13 @@ namespace SAC {
         }
 
         // re-scale and recover the spectral functions
-        this->m_spec *= this->m_scaling_factor / ( this->m_collecting_steps * grids.SpecInterval() );
+        if ( kernel.NeedManualNormalize() ) {
+            this->m_spec = M_PI * this->m_scaling_factor / ( this->m_collecting_steps * grids.SpecInterval() ) *
+                           this->m_spec.array() / ( 1.0 + ( -this->m_beta * this->m_freq.array() ).exp() ) ;
+        }
+        else {
+            this->m_spec *= this->m_scaling_factor / ( this->m_collecting_steps * grids.SpecInterval() );
+        }
     }
     
 

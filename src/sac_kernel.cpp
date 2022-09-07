@@ -8,6 +8,7 @@ namespace SAC {
     // interface member functions
     int Kernel::time_size() const { return this->m_time_size; }
     int Kernel::freq_size() const { return this->m_freq_size; }
+    std::string Kernel::type() const { return this->m_kernel_type; }
     const Eigen::MatrixXd& Kernel::kernel() const { return this->m_kernel; }
     
     // double Kernel::kernel( int t, int freq ) const 
@@ -60,7 +61,7 @@ namespace SAC {
         // kernel for bosonic correlation functions
         // e.g. dynamic spin structure factor ( susceptibility )
         // 
-        //      G(t) = int_omega{0}{+inf}  exp( -omega * t ) * B( omega )
+        //      G(t) = int_omega{0}{+inf}  ( exp( -omega * t ) + exp( -omega * (beta-t) ) ) / ( 1 + exp( -beta * omega ) ) * B( omega )
         // 
         // where B( omega ) is positive definite in (0, +inf) and B( -omega ) = exp( -beta*omega ) B( omega ) 
         // the sum rule is guaranteed by rescaling G(t=0) = 1
@@ -68,7 +69,9 @@ namespace SAC {
         if ( this->m_kernel_type == "boson" ) {
             for ( auto i = 0; i < grids.FreqNum(); ++i ) {
                 const double freq = grids.FreqIndex2Freq(i);
-                this->m_kernel.col(i) = ( -freq * qmc_reader.tgrids_qmc().array() ).exp();
+                this->m_kernel.col(i) = ( ( -freq * qmc_reader.tgrids_qmc().array() ).exp() 
+                                        + ( -freq * ( qmc_reader.beta() - qmc_reader.tgrids_qmc().array() ) ).exp() )
+                                        / ( 1.0 + exp( -qmc_reader.beta() * freq ) );
             }
         }
 

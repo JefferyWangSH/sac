@@ -49,6 +49,7 @@ namespace SAC {
             // interface member functions
             int time_size() const;
             int freq_size() const;
+            std::string type() const;
             const Eigen::MatrixXd& kernel() const;
             // double kernel( int t, int freq ) const;
 
