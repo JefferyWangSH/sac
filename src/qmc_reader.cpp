@@ -18,6 +18,7 @@ namespace SAC::Initializer {
     int QmcReader::bin_num_total() const { return this->m_bin_num_total; }
     int QmcReader::bootstrap_num() const { return this->m_bootstrap_num; }
     int QmcReader::rebin_pace() const { return this->m_rebin_pace; }
+    int QmcReader::skip_samples() const { return this->m_skip_samples; }
     double QmcReader::beta() const { return this->m_beta; }
     double QmcReader::scaling_factor() const { return this->m_g0; }
 
@@ -31,17 +32,19 @@ namespace SAC::Initializer {
     const Eigen::VectorXd& QmcReader::corr_err_qmc() const { return this->m_corr_err_qmc; }
 
 
-    void QmcReader::set_params( int time_size, double beta, int bin_num, int rebin_pace, int bootstrap_num ) 
+    void QmcReader::set_params( int time_size, double beta, int bin_num, int rebin_pace, int skip_samples, int bootstrap_num ) 
     {
         assert( time_size > 0 && beta > 0 );
         assert( bin_num > 0 && bootstrap_num > 0 );
         assert( rebin_pace > 0 && rebin_pace <= bin_num );
+        assert( skip_samples >= 0 && skip_samples < rebin_pace );
 
         this->m_time_num = time_size;
         this->m_beta = beta;
         this->m_bin_num_total = bin_num;
         this->m_rebin_pace = rebin_pace;
-        this->m_bin_num = bin_num / rebin_pace;
+        this->m_skip_samples = skip_samples;
+        this->m_bin_num = ( bin_num - skip_samples ) / rebin_pace;
         this->m_bootstrap_num = bootstrap_num;
 
         this->allocate_memory();
@@ -145,6 +148,9 @@ namespace SAC::Initializer {
         this->m_bin_data_qmc = Eigen::MatrixXd::Zero(this->m_bin_num, this->m_time_num);
 
         // read and rebin the input data
+        // if needed, skip the first few QMC samples to change the starting point of bin countings
+        for ( auto sam = 0; sam < this->m_skip_samples; ++sam ) { getline(infile, line); }
+
         for ( auto bin = 0; bin < this->m_bin_num; ++bin ) {
             for ( auto rebin = 0; rebin < this->m_rebin_pace; ++rebin ) {
                 for ( auto t = 0; t < this->m_time_num; ++t ) {

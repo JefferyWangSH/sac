@@ -119,9 +119,10 @@ int main( int argc, char *argv[] ) {
     const int num_bin_qmc = config["QmcReader"]["number_of_bins"].value_or(1e3);
     const int num_bootstrap = config["QmcReader"]["number_of_bootstraps"].value_or(5e3);
     const int rebin_pace = config["QmcReader"]["pace_of_rebin"].value_or(1);
+    const int skip_samples = config["QmcReader"]["skip_samples"].value_or(0);
     
     SAC::Initializer::QmcReader* qmc_reader = new SAC::Initializer::QmcReader();
-    qmc_reader->set_params( num_tgrids_qmc, beta, num_bin_qmc, rebin_pace, num_bootstrap );
+    qmc_reader->set_params( num_tgrids_qmc, beta, num_bin_qmc, rebin_pace, skip_samples, num_bootstrap );
     qmc_reader->read_tgrids_from_file( tgrids_file );
     qmc_reader->read_corr_from_file( corr_file );
     
@@ -198,6 +199,7 @@ int main( int argc, char *argv[] ) {
     std::cout << fmt_double % "Inverse temperature" % joiner % qmc_reader->beta() << std::endl;
     std::cout << fmt_int % "Number of QMC bins" % joiner % qmc_reader->bin_num_total() << std::endl;
     std::cout << fmt_int % "Pace of re-bin for the QMC data" % joiner % qmc_reader->rebin_pace() << std::endl;
+    std::cout << fmt_int % "Number of skipped QMC samples" % joiner % qmc_reader->skip_samples() << std::endl;
     std::cout << fmt_int % "Number of bootstrap samples" % joiner % qmc_reader->bootstrap_num() << std::endl << std::endl;
     
     std::cout << fmt_str % "Type of the SAC kernel" % joiner % kernel_type << std::endl;
@@ -254,7 +256,7 @@ int main( int argc, char *argv[] ) {
     std::cout << boost::format(">> The quality report of the recovered spectrum stored in \'%s\'.\n") % report_file << std::endl;
 
 
-    // memory release
+    // release memory
     delete qmc_reader;
     delete core;
     delete kernel;
