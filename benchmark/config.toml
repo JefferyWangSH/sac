@@ -9,7 +9,6 @@
     number_of_bins = 1000                   # number of bins in QMC measurements
     number_of_bootstraps = 5e3              # number of bootstrap samples
     pace_of_rebin = 1                       # pace of rebin
-    skip_samples = 0                        # skip the first few QMC samples to change the starting point of bin countings
 
 
 [SAC]

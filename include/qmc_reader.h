@@ -29,7 +29,6 @@ namespace SAC::Initializer {
             int m_bin_num{};                  // number of bins (after rebin)
             int m_bin_num_total{};            // number of bins (before rebin)
             int m_rebin_pace{};               // pace of rebin, 1 for all bins
-            int m_skip_samples{};             // skip first the few samples to change the starting point of bin countings
             int m_bootstrap_num{};            // number of bootstrap samples
             double m_beta{};                  // inverse temperature
             double m_g0{};                    // static correlation at G(t=0), serving as a normalization factor
@@ -53,7 +52,7 @@ namespace SAC::Initializer {
             void deallocate_memory();
             
             // set up reader params
-            void set_params( int time_size, double beta, int bin_num, int rebin_pace, int skip_samples, int bootstrap_num );
+            void set_params( int time_size, double beta, int bin_num, int rebin_pace, int bootstrap_num );
 
             // read the imaginary-time grids from the input file
             void read_tgrids_from_file( const std::string& tgrids_file );
@@ -70,13 +69,12 @@ namespace SAC::Initializer {
             void filter_and_rotate();
 
             // interface memeber functions
-            int time_num()          const;
-            int bin_num()           const;
-            int bin_num_total()     const;
-            int bootstrap_num()     const;
-            int rebin_pace()        const;
-            int skip_samples()      const;
-            double beta()           const;
+            int time_num()                const;
+            int bin_num()                 const;
+            int bin_num_total()           const;
+            int bootstrap_num()           const;
+            int rebin_pace()              const;
+            double beta()                 const;
             double scaling_factor() const;
 
             int cov_mat_dim() const;
