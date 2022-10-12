@@ -1,8 +1,8 @@
->> Current time : 2022-Jul-21 14:11:19 
+>> Current time : 2022-Oct-13 01:02:46 
 
 >> Initialization starts. ( Preprocessing of the input QMC correlations )
 
->> Initialization finished in 5.03 s.
+>> Initialization finished in 6.30 s.
 
 >> The annealing starts with the following parameters :
 
@@ -32,11 +32,11 @@
 
 >> The log info will be written into '../benchmark/log.out'.
 
->> The annealing finished in 31 m 41.83 s.
+>> The annealing finished in 38 m 59.76 s.
 
 >> Start collecting the spectral functions ...
 
->> The accumulated spectrum stored in '../benchmark/spec.out', costing 48.70 s.
+>> The accumulated spectrum stored in '../benchmark/spec.out', costing 59.20 s.
 
 >> The quality report of the recovered spectrum stored in '../benchmark/report.out'.
 
