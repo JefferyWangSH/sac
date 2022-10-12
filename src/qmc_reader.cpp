@@ -28,7 +28,7 @@ namespace SAC::Initializer {
 
     const Eigen::VectorXd& QmcReader::tgrids_qmc() const { return this->m_tgrids_qmc; }
     const Eigen::VectorXd& QmcReader::corr_mean_qmc() const { return this->m_corr_mean_qmc; }
-    const Eigen::VectorXd& QmcReader::corr_err_qmc() const { return this->m_corr_err_qmc; }
+    const Eigen::VectorXd& QmcReader::corr_stddev_qmc() const { return this->m_corr_stddev_qmc; }
 
 
     void QmcReader::set_params( int time_size, double beta, int bin_num, int rebin_pace, int bootstrap_num ) 
@@ -52,9 +52,9 @@ namespace SAC::Initializer {
     {
         this->m_tgrids_qmc.resize(this->m_time_num);
         this->m_corr_mean_qmc.resize(this->m_time_num);
-        this->m_corr_err_qmc.resize(this->m_time_num);
+        this->m_corr_stddev_qmc.resize(this->m_time_num);
 
-        this->m_bin_data_qmc.resize(this->m_bin_num, this->m_time_num);
+        this->m_qmc_samples.resize(this->m_bin_num, this->m_time_num);
         this->m_bootstrap_samples.resize(this->m_bootstrap_num, this->m_time_num);
     }
 
@@ -62,12 +62,12 @@ namespace SAC::Initializer {
     void QmcReader::deallocate_memory() 
     {
         // free useless objects which would otherwise take lots of memory
-        this->m_bin_data_qmc.resize(0, 0);
+        this->m_qmc_samples.resize(0, 0);
         this->m_bootstrap_samples.resize(0, 0);
 
         // this->m_tgrids_qmc.resize(0);
         // this->m_corr_mean_qmc.resize(0);
-        // this->m_corr_err_qmc.resize(0);
+        // this->m_corr_stddev_qmc.resize(0);
     }
 
 
@@ -126,9 +126,9 @@ namespace SAC::Initializer {
         std::vector<std::string> data;
 
         // read the heading message, total number of bins
-        getline(infile, line);
-        boost::split(data, line, boost::is_any_of(" "), boost::token_compress_on);
-        data.erase(std::remove(std::begin(data), std::end(data), ""), std::end(data));
+        getline( infile, line );
+        boost::split( data, line, boost::is_any_of(" "), boost::token_compress_on );
+        data.erase( std::remove( std::begin(data), std::end(data), "" ), std::end(data) );
         if ( this->m_bin_num_total != boost::lexical_cast<int>(data[0]) ) {
             std::cerr << "SAC::Initializer::QmcReader::read_corr_from_file(): "
                       << "inconsistence of the total number of bins "
@@ -142,45 +142,46 @@ namespace SAC::Initializer {
             exit(1);
         }
         // clear previous data
-        this->m_bin_data_qmc = Eigen::MatrixXd::Zero(this->m_bin_num, this->m_time_num);
+        this->m_qmc_samples = Eigen::MatrixXd::Zero(this->m_bin_num, this->m_time_num);
 
         // read and rebin the input data
         for ( auto bin = 0; bin < this->m_bin_num; ++bin ) {
             for ( auto rebin = 0; rebin < this->m_rebin_pace; ++rebin ) {
                 for ( auto t = 0; t < this->m_time_num; ++t ) {
-                    getline(infile, line);
-                    boost::split(data, line, boost::is_any_of(" "), boost::token_compress_on);
-                    data.erase(std::remove(std::begin(data), std::end(data), ""), std::end(data));
-                    this->m_bin_data_qmc(bin, t) += boost::lexical_cast<double>(data[2]);
+                    getline( infile, line );
+                    boost::split( data, line, boost::is_any_of(" "), boost::token_compress_on );
+                    data.erase( std::remove( std::begin(data), std::end(data), "" ), std::end(data) );
+                    this->m_qmc_samples(bin, t) += boost::lexical_cast<double>(data[2]);
                 }
             }
         }
-        this->m_bin_data_qmc /= this->m_rebin_pace;
+        this->m_qmc_samples /= this->m_rebin_pace;
         infile.close();
     }
 
 
-    void QmcReader::compute_corr_means() 
+    void QmcReader::compute_corr_mean() 
     {
         // clear previous data
         this->m_corr_mean_qmc.setZero();
 
         // calculate the mean values of correlations
         for ( auto t = 0; t < this->m_time_num; ++t ) {
-            this->m_corr_mean_qmc[t] = this->m_bin_data_qmc.col(t).sum() / this->m_bin_num;
+            this->m_corr_mean_qmc[t] = this->m_qmc_samples.col(t).sum() / this->m_bin_num;
         }
 
         // record the static correlation G(t=0), which serves as the scaling factor in SAC
-        // we will rescale the input correaltion data such that G(t=0) = 1.0,
-        // and this is exactly the normalization condition for the recovered spectral function.
+        // we will rescale the input correaltion data such that G(t=0) = 1.0
+        // for the SAC kernel of bosonic type, this is a necessity to meet the normalization condition of the recovered spectrum;
+        // while for the kernel of fermionic type, the rescaling trick is also helpful to guarantee the numerical performance.
         this->m_g0 = this->m_corr_mean_qmc[0];
     }
 
 
-    void QmcReader::compute_corr_errs() 
+    void QmcReader::compute_corr_stddev()
     {
         // clear previous data
-        this->m_corr_err_qmc.setZero();
+        this->m_corr_stddev_qmc.setZero();
         this->m_bootstrap_samples.setZero();
 
         // first generate the bootstrap samples to compute the covariance matrix
@@ -188,37 +189,36 @@ namespace SAC::Initializer {
         std::uniform_int_distribution<> rand_bin(0, this->m_bin_num-1);
         for ( auto i = 0; i < this->m_bootstrap_num; ++i ) {
             for ( auto bin = 0; bin < this->m_bin_num; bin++ ) {
-                this->m_bootstrap_samples.row(i) += this->m_bin_data_qmc.row( rand_bin(Utils::Random::Engine) );
+                this->m_bootstrap_samples.row(i) += this->m_qmc_samples.row( rand_bin( Utils::Random::Engine ) );
             }
         }
         this->m_bootstrap_samples /= this->m_bin_num;
 
-        // compute correlated errors of the input correlation functions
+        // compute the (sample) standard deviation of the input correlation functions
         for ( auto t = 0; t < this->m_time_num; ++t ) {
-            this->m_corr_err_qmc[t] = ( this->m_bootstrap_samples.col(t).array() - this->m_corr_mean_qmc[t] ).square().sum();
+            this->m_corr_stddev_qmc[t] = ( this->m_bootstrap_samples.col(t).array() - this->m_corr_mean_qmc[t] ).square().sum();
         }
-        this->m_corr_err_qmc = ( this->m_corr_err_qmc / this->m_bootstrap_num ).array().sqrt().matrix();
+        this->m_corr_stddev_qmc = ( this->m_corr_stddev_qmc / (this->m_bootstrap_num-1) ).array().sqrt().matrix();
     }
 
 
     void QmcReader::analyse_corr() 
     {
-        this->compute_corr_means();
-        this->compute_corr_errs();
+        this->compute_corr_mean();
+        this->compute_corr_stddev();
     }
 
 
     void QmcReader::discard_poor_quality_data() 
     {
         // discard correlations with poor data quality
-        // criteria: the data with good data quality should have a relative error smaller than 0.1.
-        // intermediate variable which contains indices of the correlations with `good` data quality
+        // criteria: the data with good data quality should have the ratio stddev/mean smaller than 0.1
         std::vector<int> good_tgrids;
 
         // exclude the static correlation G(t=0)
         // which serves as the normalization condition for the recovered spectrum
         for ( auto t = 1; t < this->m_time_num; ++t ) {
-            if ( std::abs(this->m_corr_err_qmc[t] / this->m_corr_mean_qmc[t]) < 0.1) {
+            if ( std::abs( this->m_corr_stddev_qmc[t]/this->m_corr_mean_qmc[t] ) < 0.1 ) {
                 good_tgrids.push_back(t);
             }
         }
@@ -234,11 +234,11 @@ namespace SAC::Initializer {
         // this requires Eigen version > 3.3.9
         const Eigen::VectorXd& tmp_tgrids = this->m_tgrids_qmc(good_tgrids);
         const Eigen::VectorXd& tmp_corr_mean = this->m_corr_mean_qmc(good_tgrids);
-        const Eigen::VectorXd& tmp_corr_err = this->m_corr_err_qmc(good_tgrids);
+        const Eigen::VectorXd& tmp_corr_err = this->m_corr_stddev_qmc(good_tgrids);
         const Eigen::MatrixXd& tmp_bootstrap_samples = this->m_bootstrap_samples(Eigen::all, good_tgrids);
         this->m_tgrids_qmc = tmp_tgrids;
         this->m_corr_mean_qmc = tmp_corr_mean;
-        this->m_corr_err_qmc = tmp_corr_err;
+        this->m_corr_stddev_qmc = tmp_corr_err;
         this->m_bootstrap_samples = tmp_bootstrap_samples;
     }
 
@@ -248,14 +248,19 @@ namespace SAC::Initializer {
         // clear previous data
         this->m_cov_mat = Eigen::MatrixXd::Zero(this->m_cov_mat_dim, this->m_cov_mat_dim);
 
-        // compute the covariance matrix
-        // correlations data with `poor` quality should be discarded in advance
+        // compute the covariance matrix which is defined as 
+        // 
+        //      C(ti,tj) = 1/(Nb-1) \sum b ( G(ti, b) - \bar{G(ti)} ) * ( G(tj, b) - \bar{G(tj)} )
+        //
+        // where b sum over the bootstrap samples, \bar{G(ti)} is the mean value of QMC correlations at imaginary-time ti
+        // note that the correlations data with poor quality should be discarded in advance
         for ( auto i = 0; i < this->m_cov_mat_dim; ++i ) {
             for ( auto j = 0; j < this->m_cov_mat_dim; ++j ) {
                 this->m_cov_mat(i, j) = ( (this->m_bootstrap_samples.col(i).array() - this->m_corr_mean_qmc[i])
                                         * (this->m_bootstrap_samples.col(j).array() - this->m_corr_mean_qmc[j]) ).sum();
             }
         }
+        this->m_cov_mat /= this->m_bootstrap_num - 1;
     }
 
 
@@ -266,7 +271,7 @@ namespace SAC::Initializer {
 
         // rescale the correlation data by G(t=0)
         this->m_corr_mean_qmc /= this->m_g0;
-        this->m_corr_err_qmc /= this->m_g0;
+        this->m_corr_stddev_qmc /= this->m_g0;
         this->m_bootstrap_samples /= this->m_g0;
 
         // compute the covariance matrix
@@ -278,11 +283,11 @@ namespace SAC::Initializer {
         // for a real symmetric matrix, this exists an orthogonal transformation T satisfying
         //   T * C * T^dagger -> diagonal space
         // where T is the orthogonal rotation matrix.
-        Utils::LinearAlgebra::mkl_lapack_dsyev(this->m_cov_mat_dim, this->m_cov_mat, this->m_eig_vec, this->m_rotate_mat);
+        Utils::LinearAlgebra::mkl_lapack_dsyev( this->m_cov_mat_dim, this->m_cov_mat, this->m_eig_vec, this->m_rotate_mat );
 
         // alternative method with lower accuracy, using SVD
         // Eigen::MatrixXd u(this->m_cov_mat_dim, this->m_cov_mat_dim), v(this->m_cov_mat_dim, this->m_cov_mat_dim);
-        // Utils::LinearAlgebra::mkl_lapack_dgesvd(this->m_cov_mat_dim, this->m_cov_mat_dim, this->m_cov_mat, u, this->m_eig_vec, v);
+        // Utils::LinearAlgebra::mkl_lapack_dgesvd( this->m_cov_mat_dim, this->m_cov_mat_dim, this->m_cov_mat, u, this->m_eig_vec, v );
         // this->m_rotate_mat = u.transpose();
     }
 

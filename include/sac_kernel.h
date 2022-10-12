@@ -43,7 +43,6 @@ namespace SAC {
             void set_kernel_params( int time_size, int freq_size, const std::string& kernel_type="fermion" );
 
             // initialize the kernel object from time and frequency grids
-            // todo: replace SacCore with QmcReader
             void initial( const Initializer::QmcReader& qmc_reader, const Grids::FreqGrids& grids );
 
             // interface member functions

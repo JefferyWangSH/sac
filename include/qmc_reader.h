@@ -6,10 +6,10 @@
   *  This header file defines the `SAC::InitializerQmcReader` class, 
   *  which serves as a interface class for the input of the QMC data.
   *  Features:
-  *    1. read the imaginary-time dynamical correlation functions G(t),
-  *       in form of the raw data which includes the bin samples.
+  *    1. read the imaginary-time dynamic correlation functions G(t),
+  *       in form of the raw data with the bin samples included.
   *    2. generate and diagonalize the covariance matrix, 
-  *       further compute its eigenvalue and eigenvector for the sake of SAC.
+  *       further compute its eigenvalue and eigenvector for the SAC usage.
   *       ( The SAC calculation is performed in the eigen space of the covariance matrix. )
   */
 
@@ -21,10 +21,11 @@
 
 namespace SAC::Initializer {
 
-    // ---------------------------------------  SAC::InitializerQmcReader class  --------------------------------------------
+    // ---------------------------------------  SAC::Initializer::QmcReader class  --------------------------------------------
     class QmcReader {
 
         private:
+
             int m_time_num{};                 // number of imaginary-time points
             int m_bin_num{};                  // number of bins (after rebin)
             int m_bin_num_total{};            // number of bins (before rebin)
@@ -38,12 +39,13 @@ namespace SAC::Initializer {
             Eigen::MatrixXd m_rotate_mat{};   // orthogonal matrix, which rotates the covariance matrix to its eigen space
             Eigen::VectorXd m_eig_vec{};      // eigenvalue vector of the covariance matrix
 
-            // processed QMC data used for SAC simulation
-            Eigen::VectorXd m_tgrids_qmc{}, m_corr_mean_qmc{}, m_corr_err_qmc{};
+            // the processed QMC data useful for the SAC simulation
+            Eigen::VectorXd m_tgrids_qmc{}, m_corr_mean_qmc{}, m_corr_stddev_qmc{};
 
             // intermediate matrices
-            Eigen::MatrixXd m_bin_data_qmc;
+            Eigen::MatrixXd m_qmc_samples;
             Eigen::MatrixXd m_bootstrap_samples;
+
 
         public:
 
@@ -61,7 +63,7 @@ namespace SAC::Initializer {
             // also rebin the raw data if necessary
             void read_corr_from_file( const std::string& corr_file );
 
-            // compute the mean value and correlated error of the input correlation functions
+            // compute the mean value and standard deviation of the input correlation functions
             void analyse_corr();
             
             // discard correlation data with poor data quality
@@ -69,12 +71,12 @@ namespace SAC::Initializer {
             void filter_and_rotate();
 
             // interface memeber functions
-            int time_num()                const;
-            int bin_num()                 const;
-            int bin_num_total()           const;
-            int bootstrap_num()           const;
-            int rebin_pace()              const;
-            double beta()                 const;
+            int time_num()          const;
+            int bin_num()           const;
+            int bin_num_total()     const;
+            int bootstrap_num()     const;
+            int rebin_pace()        const;
+            double beta()           const;
             double scaling_factor() const;
 
             int cov_mat_dim() const;
@@ -82,19 +84,19 @@ namespace SAC::Initializer {
             const Eigen::MatrixXd& rotate_mat() const;
             const Eigen::VectorXd& eig_vec()    const;
 
-            const Eigen::VectorXd& tgrids_qmc()    const;
-            const Eigen::VectorXd& corr_mean_qmc() const;
-            const Eigen::VectorXd& corr_err_qmc()  const;
+            const Eigen::VectorXd& tgrids_qmc()      const;
+            const Eigen::VectorXd& corr_mean_qmc()   const;
+            const Eigen::VectorXd& corr_stddev_qmc() const;
 
         private:
         
             void allocate_memory();
 
             // compute the mean value of the correlations
-            void compute_corr_means();
+            void compute_corr_mean();
 
-            // compute the corr-error of the correlations
-            void compute_corr_errs();
+            // compute the standard deviation of the correlations
+            void compute_corr_stddev();
 
             // generate the covariance matrix and diagonalize it
             void compute_cov_matrix();
@@ -104,6 +106,8 @@ namespace SAC::Initializer {
 
     };
 
+
 } // namespace SAC::Initializer
+
 
 #endif // SAC_INITIALIZER_QMC_READER_H

@@ -38,12 +38,12 @@ namespace SAC {
 
         if ( is_empty ) {
             // if empty, print the header infomation
-            boost::format header_format("%| 15s|%| 13s|%| 15s|%| 15s|%| 18s|%| 15s|%| 15s|%| 15s|");
+            boost::format header_format("%| 18s|%| 18s|%| 18s|%| 18s|%| 18s|%| 18s|%| 18s|%| 18s|");
             outfile << header_format % "AnnealingStep" % "BinIndex" % "Theta" % "MinChi2/nt" % "AveragedChi2/nt" 
                                      % "DeltaChi2" % "AcceptRatio" % "WindowWidth" << std::endl;
         }
 
-        boost::format log_format("%| 15d|%| 13d|%| 15.3e|%| 15.3e|%| 18.3e|%| 15.3e|%| 15.5f|%| 15.5e|");
+        boost::format log_format("%| 18d|%| 18d|%| 18.3e|%| 18.3e|%| 18.3e|%| 18.3e|%| 18.5f|%| 18.5e|");
         outfile << log_format % ( chain.length() + 1 )
                               % ( n + 1 ) 
                               % ( core.Theta() )
@@ -64,7 +64,7 @@ namespace SAC {
                       << "fail to open file \'" << file << "\'." << std::endl;
             exit(1);
         }
-        boost::format out_format("%| 15d|%| 20.8f|%| 20.8f|");
+        boost::format out_format("%| 20d|%| 20.8f|%| 20.8f|");
         for ( auto i = 0; i < core.FrequencyGrids().size(); ++i ) {
             outfile << out_format % i 
                                   % core.FrequencyGrids(i)
@@ -96,15 +96,15 @@ namespace SAC {
         const Eigen::VectorXd& corr_sac = tmp_kernel * core.RecoveredSpectrum() * grids.SpecInterval() / core.ScalingFactor();
         const Eigen::VectorXd& diff = core.CorrQmc() - corr_sac;
 
-        boost::format header_format("%| 23d|%| 23d|%| 18d|%| 23d|%| 23d|%| 18d|%| 23d|");
-        boost::format out_format("%| 23.8f|%| 23.8f|%| 18.8f|%| 23.8f|%| 23.8f|%| 18.8f|%| 23.8f|");
-        outfile << header_format % "CorrMeanQMC(Scaled)" % "CorrErrorQMC(Scaled)" % "CovEigenValue"
+        boost::format header_format("%| 23d|%| 23d|%| 23d|%| 23d|%| 23d|%| 23d|%| 23d|");
+        boost::format out_format("%| 23.8f|%| 23.8f|%| 23.8e|%| 23.8f|%| 23.8f|%| 23.8f|%| 23.8f|");
+        outfile << header_format % "CorrMeanQMC(Scaled)" % "CorrStddevQMC(Scaled)" % "CovEigenValue(Sqrt)"
                                  % "CorrQMC(DiagSpace)" % "CorrSAC(DiagSpace)" % "Diff" % "SigmaSAC(DiagSpace)"
                 << std::endl;
         for ( auto i = 0; i < core.TimeSize(); ++i ) {
             outfile << out_format % qmc_reader.corr_mean_qmc()(i)
-                                  % qmc_reader.corr_err_qmc()(i)
-                                  % qmc_reader.eig_vec()(i)
+                                  % qmc_reader.corr_stddev_qmc()(i)
+                                  % std::sqrt(qmc_reader.eig_vec()(i))
                                   % core.CorrQmc()(i)
                                   % corr_sac(i)
                                   % diff(i)

@@ -92,7 +92,7 @@ namespace SAC {
 
         this->m_tgrids_qmc = qmc_reader.tgrids_qmc();
         this->m_corr_qmc = qmc_reader.rotate_mat() * qmc_reader.corr_mean_qmc();
-        this->m_sigma_qmc = ( std::sqrt(qmc_reader.bootstrap_num()) / qmc_reader.eig_vec().array().sqrt() ).matrix();
+        this->m_sigma_qmc = ( 1.0 / qmc_reader.eig_vec().array().sqrt() ).matrix();
 
 
         // -----------------------------------------------------------------------------------------
@@ -163,7 +163,7 @@ namespace SAC {
         this->compute_corr_from_deltas( kernel );
 
         // compute the goodness of fitting (chi2) for the initial configurations of delta functions
-        this->m_chi2 = this->compute_goodness(this->m_corr_now);
+        this->m_chi2 = this->compute_goodness( this->m_corr_now );
         this->m_chi2_min = this->m_chi2;
 
         this->m_accept_ratio = 0.0;

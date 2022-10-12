@@ -4,11 +4,9 @@
 
 /**
   *  This header file defines `SAC::SacCore` class as a central module of the SAC method.
-  *  The stochastic analytic continuation method (SAC) 
-  *  was first proposed by Anders.W. Sandvik in 1998. 
+  *  The stochastic analytic continuation method (SAC) was first proposed by Anders.W. Sandvik in 1998. 
   *  It performs a Monte Carlo simulation combining with a simulated annealing process
-  *  to extract the real-frequency spectral information 
-  *  from imaginary-time QMC correlation functions.
+  *  to extract the real-frequency spectral information from imaginary-time QMC correlation functions.
   */
 
 #include <string>
@@ -46,7 +44,7 @@ namespace SAC {
 
             Eigen::VectorXd m_tgrids_qmc{};       // imaginary-time points from QMC (processed)
             Eigen::VectorXd m_corr_qmc{};         // correlation functions from QMC (processed)
-            Eigen::VectorXd m_sigma_qmc{};        // standard deviation of the transformed correlations
+            Eigen::VectorXd m_sigma_qmc{};        // inverse of standard deviation of the transformed correlations
 
             Eigen::VectorXd m_corr_now{};         // current correlation functions
             Eigen::VectorXd m_corr_next{};        // updated correlation functions
